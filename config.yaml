@@ -1,0 +1,17 @@
+debug: true
+web:
+  host: 127.0.0.1
+  port: 8000
+sentry:
+  dsn:
+  env: dev
+
+session:
+  key: CaY5iCkYtN7DqXdiYK1BvmGrQuaSA4Tl4bEk9my0jc0=
+
+database:
+  host: localhost
+  port: 5432
+  user: docs_admin
+  password: 123
+  database: docs_db

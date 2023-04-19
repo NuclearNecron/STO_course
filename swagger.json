@@ -1,0 +1,771 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Better Together - Совместное редактирование документов",
+    "description": "Это спецификация посвященная RestAPI для сервиса совместного редактирования документов \"Better Together\". Основана на спецификации OpenAPI 3.0.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000/"
+    }
+  ],
+  "tags": [
+    {
+      "name": "user",
+      "description": "Все, что связано с пользователем"
+    },
+    {
+      "name": "docs",
+      "description": "Все по работе с документами"
+    }
+  ],
+  "paths": {
+    "/user/create": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Add new user",
+        "description": "Add new user",
+        "operationId": "createUser",
+        "requestBody": {
+          "description": "Create new user for system",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/login"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Data supplied"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "409": {
+            "description": "User already exist"
+          }
+        }
+      }
+    },
+    "/user/login": {
+      "post": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Authenticate as user",
+        "description": "Authenticate as user",
+        "operationId": "loginUser",
+        "requestBody": {
+          "description": "Login as user to get cookie",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/login"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid Data provided"
+          }
+        }
+      }
+    },
+    "/user/current": {
+      "get": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "user"
+        ],
+        "summary": "get current user",
+        "description": "Authenticate as user",
+        "operationId": "currentUser",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/user"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Cookie is invalid"
+          }
+        }
+      }
+    },
+    "/doc/create": {
+      "post": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "Creates new doc",
+        "description": "Creates new empty doc",
+        "operationId": "createDoc",
+        "requestBody": {
+          "description": "data to make new doc",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/newdoc"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/doc"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorize to get access"
+          },
+          "409": {
+            "description": "Theres already similar file"
+          }
+        }
+      }
+    },
+    "/doc/list": {
+      "get": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "get list of avaiable docs",
+        "description": "Returns list of avaiable docs",
+        "operationId": "listDoc",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "description": "id of user, to return his docs",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/doc"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorize to get access"
+          }
+        }
+      }
+    },
+    "/doc/{docId}": {
+      "get": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "get doc by id",
+        "description": "Returns doc with requested id",
+        "operationId": "getDoc",
+        "parameters": [
+          {
+            "name": "docId",
+            "in": "path",
+            "description": "ID of doc to return",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/doc"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorize to get access"
+          },
+          "403": {
+            "description": "You have no access to file"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "update doc",
+        "description": "Updates doc with new data",
+        "operationId": "updateDoc",
+        "parameters": [
+          {
+            "name": "docId",
+            "in": "path",
+            "description": "ID of doc to return",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "data to update doc",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/upddoc"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/doc"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Authorize to get access"
+          },
+          "403": {
+            "description": "You have no access to file"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "delete doc by id",
+        "description": "Deletes doc by id",
+        "operationId": "deleteDoc",
+        "parameters": [
+          {
+            "name": "docId",
+            "in": "path",
+            "description": "ID of doc to delete",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation"
+          },
+          "401": {
+            "description": "Authorize to get access"
+          },
+          "403": {
+            "description": "You have no access to file"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      }
+    },
+    "/doc/share/{docId}": {
+      "post": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "add user to doc",
+        "description": "Adds user to doc",
+        "operationId": "shareDoc",
+        "parameters": [
+          {
+            "name": "docId",
+            "in": "path",
+            "description": "ID of doc to give access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "data to share doc",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/sharedoc"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sharedocres"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorize to get access"
+          },
+          "403": {
+            "description": "You have no access to file"
+          },
+          "404": {
+            "description": "File not found"
+          },
+          "409": {
+            "description": "Access already given"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "edit user access to doc",
+        "description": "Edits user access to doc",
+        "operationId": "EditShareDoc",
+        "parameters": [
+          {
+            "name": "docId",
+            "in": "path",
+            "description": "ID of doc to edit access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "data to edit user access to doc",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/editsharedoc"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sharedocres"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorize to get access"
+          },
+          "403": {
+            "description": "You have no access to file"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      },
+      "get": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "get user accesses to doc",
+        "description": "Get user accesses to doc",
+        "operationId": "GetShareDoc",
+        "parameters": [
+          {
+            "name": "docId",
+            "in": "path",
+            "description": "ID of doc to get accesses",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "description": "ID of user to get his access",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/sharedocres"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authorize to get access"
+          },
+          "403": {
+            "description": "You have no access to file"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "tags": [
+          "docs"
+        ],
+        "summary": "delete user access to doc",
+        "description": "Delete user access to doc",
+        "operationId": "DeleteShareDoc",
+        "parameters": [
+          {
+            "name": "docId",
+            "in": "path",
+            "description": "ID of doc to delete access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "description": "ID of user to remove his access",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation"
+          },
+          "401": {
+            "description": "Authorize to get access"
+          },
+          "403": {
+            "description": "You have no access to file"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "login": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "passowrd": {
+            "type": "string",
+            "format": "password",
+            "example": 123
+          }
+        }
+      },
+      "user": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+          },
+          "username": {
+            "type": "string",
+            "example": "admin"
+          }
+        }
+      },
+      "newdoc": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "myverycooldoc"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-07-21T17:32:28.000Z"
+          }
+        }
+      },
+      "doc": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "myverycooldoc"
+          },
+          "path": {
+            "type": "string",
+            "example": "static/docs/myverycooldoc.txt"
+          },
+          "last_edited": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2017-07-21T17:32:28.000Z"
+          },
+          "owner": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "example": 10
+              },
+              "username": {
+                "type": "string",
+                "example": "admin"
+              }
+            }
+          }
+        }
+      },
+      "upddoc": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "myverycooldocupdated"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2018-07-21T17:32:28.000Z"
+          }
+        }
+      },
+      "sharedoc": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+          },
+          "rights": {
+            "type": "string",
+            "description": "rights of access",
+            "example": "read",
+            "enum": [
+              "read",
+              "write"
+            ]
+          }
+        }
+      },
+      "sharedocres": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "example": 10
+              },
+              "username": {
+                "type": "string",
+                "example": "admin"
+              }
+            }
+          },
+          "doc": {
+            "type": "integer",
+            "format": "int64",
+            "example": 2
+          },
+          "rights": {
+            "type": "string",
+            "description": "rights of access",
+            "example": "read",
+            "enum": [
+              "read",
+              "write"
+            ]
+          }
+        }
+      },
+      "editsharedoc": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+          },
+          "rights": {
+            "type": "string",
+            "description": "rights of access",
+            "example": "read",
+            "enum": [
+              "read",
+              "write"
+            ]
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionId"
+      }
+    }
+  }
+}
