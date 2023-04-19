@@ -6,26 +6,19 @@ from aiohttp.web import (
     View as AiohttpView,
 )
 
-# from app.store.database.database import Database
-# from app.core.config import Config, setup_config
+from app.core.config import setup_config, Config
 from app.core.logger import setup_logging
 
 # from app.core.mw import setup_middlewares
 from app.core.urls import setup_routes
 
-# from app.admin.models import AdminDC
-from app.store import Store, setup_store
-
-
-# from aiohttp_apispec import setup_aiohttp_apispec
-# from aiohttp_session import setup as session_setup
-# from aiohttp_session.cookie_storage import EncryptedCookieStorage
+from app.store import Store, setup_store, RedisDB
 
 
 class Application(AiohttpApplication):
-    # config: Optional[Config] = None
+    config: Config | None = None
     store: Store | None = None
-    # database: Optional[Database] = None
+    redis: RedisDB | None = None
 
 
 class Request(AiohttpRequest):
@@ -42,9 +35,9 @@ class View(AiohttpView):
     def request(self) -> Request:
         return super().request
 
-    # @property
-    # def database(self):
-    #     return self.request.app.database
+    @property
+    def redis(self):
+        return self.request.app.redis
 
     @property
     def store(self) -> Store:
@@ -58,8 +51,8 @@ class View(AiohttpView):
 app = Application()
 
 
-def setup_app() -> Application:
-    # setup_config(app)
+def setup_app(config_path: str) -> Application:
+    setup_config(app, config_path)
     setup_logging(app)
     setup_routes(app)
     # setup_middlewares(app)

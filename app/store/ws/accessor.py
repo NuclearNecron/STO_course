@@ -1,9 +1,10 @@
 import asyncio
 import typing
-from asyncio import Queue
+from asyncio import Queue, TaskGroup
 from collections import defaultdict
 
 import marshmallow.exceptions
+from aiohttp import WSMessage
 from aiohttp.web import WebSocketResponse
 
 from app.base.base_accessor import BaseAccessor
@@ -15,19 +16,21 @@ if typing.TYPE_CHECKING:
     from app.core.application import Application
 
 
-conn_key = tuple[str, str]  # тип для ключа WebSocket соединения
+USER_DOC_KEY = tuple[str, str]  # тип для ключа WebSocket соединения
 
 
 class WSAccessor(BaseAccessor):
-    _heartbeat: int | None = None  # Каждые heartbeat секунд пингуем соединения
+    _heartbeat: float | None = (
+        None  # Каждые heartbeat секунд пингуем соединение
+    )
     _connections: dict[
-        conn_key, list[WSConnection]
+        USER_DOC_KEY, list[WSConnection]
     ] | None = None  # Словарь пользователей и их WebSocket соединений
 
     def __init__(self, app: "Application", *args, **kwargs):
         super().__init__(app, *args, **kwargs)
         self._connections = defaultdict(list)
-        # self._heartbeat = 20
+        self._heartbeat = 20.0
 
     async def handle_request(self, request: "Request"):
         """Обработка запроса на обновление соединения до WebSocket"""
@@ -46,8 +49,9 @@ class WSAccessor(BaseAccessor):
         )
         return ws_response
 
-    async def read(self, connection_key: conn_key, ws_pipe_index: int):
+    async def read(self, connection_key: USER_DOC_KEY, ws_pipe_index: int):
         """Чтение сообщения из WebSocket соединения"""
+        message: WSMessage
         async for message in self._connections[connection_key][
             ws_pipe_index
         ].ws_connection:
@@ -64,7 +68,7 @@ class WSAccessor(BaseAccessor):
                 )
                 return
 
-    async def close(self, connection_key: conn_key, ws_pipe_index: int):
+    async def close(self, connection_key: USER_DOC_KEY, ws_pipe_index: int):
         """Закрытие WebSocket соединения"""
         try:
             connection = self._connections[connection_key].pop(ws_pipe_index)
@@ -75,28 +79,32 @@ class WSAccessor(BaseAccessor):
             return
 
     async def push_selected(
-        self, selected_connections: list[conn_key], data: str
+        self, selected_connections: list[USER_DOC_KEY], data: str
     ):
-        """Отправка сообщения по выбранным WebSocket соединениям"""
-        await asyncio.gather(
-            *[
-                self._push(connection_key, data)
-                for connection_key in self._connections.keys()
-                if connection_key in selected_connections
-            ],
-            return_exceptions=True,
-        )
+        """Отправка сообщения по WebSocket соединениям с выбранными ключами"""
+        tg: TaskGroup
+        async with asyncio.TaskGroup() as tg:
+            for connection_key in self._connections.keys():
+                if connection_key in selected_connections:
+                    tg.create_task(self._push(connection_key, data))
         return
 
-    async def _push(self, connection_key: conn_key, data: str):
-        """Отправка сообщения по WebSocket соединению"""
+    async def push_selected_doc(self, _doc: str, data: str):
+        """Отправка сообщения все пользователям, редактирующим данный документ"""
+        tg: TaskGroup
+        async with asyncio.TaskGroup() as tg:
+            for user, doc in self._connections.keys():
+                if doc == _doc:
+                    tg.create_task(self._push((user, doc), data))
+        return
+
+    async def _push(self, connection_key: USER_DOC_KEY, data: str):
+        """Отправка сообщения по WebSocket соединению по ключу пользователь-документ"""
         try:
-            await asyncio.gather(
-                *[
-                    ws.ws_connection.send_str(data)
-                    for ws in self._connections[connection_key]
-                ]
-            )
+            tg: TaskGroup
+            async with asyncio.TaskGroup() as tg:
+                for ws in self._connections[connection_key]:
+                    tg.create_task(ws.ws_connection.send_str(data))
         except KeyError:
             return
         except ConnectionResetError:

@@ -1,2 +1,4 @@
 aiohttp==3.8.4
 marshmallow==3.19.0
+redis==4.5.4
+PyYAML==6.0
