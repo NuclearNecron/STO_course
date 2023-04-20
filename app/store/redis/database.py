@@ -15,9 +15,12 @@ class RedisDB:
         self.connection = Redis(
             host=self.app.config.redis.host,
             port=self.app.config.redis.port,
-            db=self.app.config.redis.db
+            db=self.app.config.redis.db,
+            decode_responses=True
         )
-        self.app.logger.info(f"Ping Redis-server successfully: {await self.connection.ping()}")
+        self.app.logger.info(
+            f"Ping Redis-server successfully: {await self.connection.ping()}"
+        )
 
     async def disconnect(self, *_: list, **__: dict):
         if self.connection:

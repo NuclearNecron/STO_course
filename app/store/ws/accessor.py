@@ -1,5 +1,7 @@
 import asyncio
+import json
 import typing
+import uuid
 from asyncio import Queue, TaskGroup
 from collections import defaultdict
 
@@ -24,54 +26,53 @@ class WSAccessor(BaseAccessor):
         None  # Каждые heartbeat секунд пингуем соединение
     )
     _connections: dict[
-        USER_DOC_KEY, list[WSConnection]
+        USER_DOC_KEY, dict[str, WSConnection]
     ] | None = None  # Словарь пользователей и их WebSocket соединений
 
     def __init__(self, app: "Application", *args, **kwargs):
         super().__init__(app, *args, **kwargs)
-        self._connections = defaultdict(list)
+        self._connections = defaultdict(dict)
         self._heartbeat = 20.0
 
     async def handle_request(self, request: "Request"):
         """Обработка запроса на обновление соединения до WebSocket"""
+        # TODO: авторизация?
+        user, doc = request.user_credentials, request.match_info["document_id"]
         ws_response = WebSocketResponse(heartbeat=self._heartbeat)
         await ws_response.prepare(request)
-        request.user_credentials = "USER_ID: 1"
-        connection_key = (str(request.user_credentials), "DOC_ID: 1")
-        self._connections[connection_key].append(
-            WSConnection(ws_connection=ws_response, msg_queue=Queue())
+        ws_pipe_key = str(uuid.uuid4())
+        self._connections[(user, doc)][ws_pipe_key] = WSConnection(
+            ws_connection=ws_response, msg_queue=Queue()
         )
-        await self.read(
-            connection_key, len(self._connections[connection_key]) - 1
-        )
-        await self.close(
-            connection_key, len(self._connections[connection_key]) - 1
-        )
+        updates = await self.app.store.redis.get_all_updates(doc)
+        for update in updates:
+            await self.push_selected([(user, doc)], update)
+        await self.read((user, doc), ws_pipe_key)
+        await self.close((user, doc), ws_pipe_key)
         return ws_response
 
-    async def read(self, connection_key: USER_DOC_KEY, ws_pipe_index: int):
-        """Чтение сообщения из WebSocket соединения"""
+    async def read(self, connection_key: USER_DOC_KEY, ws_pipe_key: str):
+        """Чтение сообщений из WebSocket соединения"""
+        user, doc = connection_key
         message: WSMessage
         async for message in self._connections[connection_key][
-            ws_pipe_index
+            ws_pipe_key
         ].ws_connection:
             try:
                 event: Event = EventSchema().loads(message.data)
-                await self.push_selected(
-                    selected_connections=[connection_key], data=message.data
-                )
-            except marshmallow.exceptions.ValidationError:
-                # TODO: отправить сообщение на фронт, что тип сообщения не выдержан
+                await self.app.store.redis.append_update(doc, EventSchema().dumps(event))
+                await self.push_selected_doc(doc, EventSchema().dumps(event))
+            except marshmallow.exceptions.ValidationError as e:
                 await self.push_selected(
                     selected_connections=[connection_key],
-                    data=str("Увы, неверный формат сообщения был отправлен"),
+                    data=f"Неверный формат сообщения: {str(e.data)}",
                 )
                 return
 
-    async def close(self, connection_key: USER_DOC_KEY, ws_pipe_index: int):
+    async def close(self, connection_key: USER_DOC_KEY, ws_pipe_key: str):
         """Закрытие WebSocket соединения"""
         try:
-            connection = self._connections[connection_key].pop(ws_pipe_index)
+            connection = self._connections[connection_key].pop(ws_pipe_key)
             if len(self._connections[connection_key]) == 0:
                 self._connections.pop(connection_key)
             await connection.ws_connection.close()
@@ -84,29 +85,29 @@ class WSAccessor(BaseAccessor):
         """Отправка сообщения по WebSocket соединениям с выбранными ключами"""
         tg: TaskGroup
         async with asyncio.TaskGroup() as tg:
-            for connection_key in self._connections.keys():
-                if connection_key in selected_connections:
-                    tg.create_task(self._push(connection_key, data))
+            for connection_key in selected_connections:
+                tg.create_task(self._push(connection_key, data))
         return
 
-    async def push_selected_doc(self, _doc: str, data: str):
+    async def push_selected_doc(self, document: str, data: str):
         """Отправка сообщения все пользователям, редактирующим данный документ"""
         tg: TaskGroup
         async with asyncio.TaskGroup() as tg:
             for user, doc in self._connections.keys():
-                if doc == _doc:
+                if doc == document:
                     tg.create_task(self._push((user, doc), data))
         return
 
     async def _push(self, connection_key: USER_DOC_KEY, data: str):
-        """Отправка сообщения по WebSocket соединению по ключу пользователь-документ"""
+        """Отправка сообщения по всем WebSocket соединениям с данным ключом пользователь-документ"""
         try:
             tg: TaskGroup
             async with asyncio.TaskGroup() as tg:
-                for ws in self._connections[connection_key]:
+                ws: WSConnection
+                for ws in self._connections[connection_key].values():
                     tg.create_task(ws.ws_connection.send_str(data))
         except KeyError:
             return
-        except ConnectionResetError:
-            self._connections.pop(connection_key)
-            return
+        # except ConnectionResetError:
+        #     self._connections.pop(connection_key)
+        #     return

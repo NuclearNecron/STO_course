@@ -1,4 +1,3 @@
-import typing
 from asyncio import Queue
 from dataclasses import dataclass
 
@@ -14,4 +13,4 @@ class WSConnection:
 @dataclass
 class Event:
     type: str
-    payload: typing.Dict
+    payload: dict

@@ -9,7 +9,7 @@ from aiohttp.web import (
 from app.core.config import setup_config, Config
 from app.core.logger import setup_logging
 
-# from app.core.mw import setup_middlewares
+from app.core.middlewares import setup_middlewares
 from app.core.urls import setup_routes
 
 from app.store import Store, setup_store, RedisDB
@@ -22,7 +22,6 @@ class Application(AiohttpApplication):
 
 
 class Request(AiohttpRequest):
-    # TODO: set to None by default, change it in middleware
     user_credentials: Any = None
 
     @property
@@ -55,6 +54,6 @@ def setup_app(config_path: str) -> Application:
     setup_config(app, config_path)
     setup_logging(app)
     setup_routes(app)
-    # setup_middlewares(app)
+    setup_middlewares(app)
     setup_store(app)
     return app

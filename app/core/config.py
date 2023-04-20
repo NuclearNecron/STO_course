@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import yaml
 
 import typing
+
 if typing.TYPE_CHECKING:
     from app.core.application import Application
 
@@ -19,7 +20,7 @@ class Config:
     redis: RedisConfig | None = None
 
 
-def setup_config(app: 'Application', config_path: str):
+def setup_config(app: "Application", config_path: str):
     with open(config_path, "r") as f:
         raw_config = yaml.safe_load(f)
 
@@ -27,6 +28,6 @@ def setup_config(app: 'Application', config_path: str):
         redis=RedisConfig(
             host=raw_config["redis"]["host"],
             port=raw_config["redis"]["port"],
-            db=raw_config["redis"]["db"]
+            db=raw_config["redis"]["db"],
         )
     )
