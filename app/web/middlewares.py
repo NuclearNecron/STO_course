@@ -7,6 +7,7 @@ from aiohttp.web_middlewares import middleware
 from aiohttp_apispec import validation_middleware
 from aiohttp_session import get_session
 
+from app.user.dataclasses import UserDC
 from app.web.utils import error_json_response
 
 if typing.TYPE_CHECKING:
@@ -17,7 +18,7 @@ if typing.TYPE_CHECKING:
 async def auth_middleware(request: "Request", handler: callable):
     session = await get_session(request)
     if session:
-        request.user = User.from_session(session=session)
+        request.user = UserDC.from_session(session=session)
     return await handler(request)
 
 

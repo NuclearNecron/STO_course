@@ -9,6 +9,7 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from app.store import setup_store, Store
 from app.store.database.database import Database
+from app.user.dataclasses import UserDC
 from app.web.config import setup_config, Config
 from app.web.logger import setup_logging
 from aiohttp_session import setup as session_setup
@@ -24,7 +25,7 @@ class Application(AiohttpApplication):
 
 
 class Request(AiohttpRequest):
-    user: User | None = None
+    user: UserDC | None = None
 
     @property
     def app(self) -> Application:
