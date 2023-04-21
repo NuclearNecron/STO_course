@@ -26,7 +26,7 @@ class UserAccessor(BaseAccessor):
                 )
             return None
 
-    async def create_admin(
+    async def create_user(
         self, login: str, password: str, nickname: str
     ) -> UserDC:
         async with self.app.database.session() as session:

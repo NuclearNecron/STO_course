@@ -16,6 +16,7 @@ from aiohttp_session import setup as session_setup
 from swagger_ui import api_doc
 
 from app.web.middlewares import setup_middlewares
+from app.web.routes import register_urls
 
 
 class Application(AiohttpApplication):
@@ -61,7 +62,6 @@ def setup_app(config_path: str) -> Application:
     api_doc(
         app, config_path="swagger.json", url_prefix="/api/doc", title="API docs"
     )
-    # register_urls(app)
+    register_urls(app)
     setup_store(app)
-
     return app
