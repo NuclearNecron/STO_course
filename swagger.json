@@ -649,28 +649,16 @@
             "type": "string",
             "example": "myverycooldoc"
           },
-          "path": {
-            "type": "string",
-            "example": "static/docs/myverycooldoc.txt"
-          },
           "last_edited": {
             "type": "string",
             "format": "date-time",
             "example": "2017-07-21T17:32:28.000Z"
           },
-          "owner": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer",
-                "format": "int64",
-                "example": 10
-              },
-              "username": {
-                "type": "string",
-                "example": "admin"
-              }
-            }
+          "owner_id": {
+            "type": "integer",
+            "format": "int64",
+            "example": 10
+
           }
         }
       },

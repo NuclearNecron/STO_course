@@ -1,9 +1,13 @@
-from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized
+from aiohttp.web_exceptions import (
+    HTTPForbidden,
+    HTTPUnauthorized,
+    HTTPBadRequest,
+)
 from aiohttp_apispec import (
     request_schema,
-    response_schema,
-    docs,
 )
+import aiofiles.os as aios
+from os.path import join, dirname
 from aiohttp_session import new_session
 
 from app.web.app import View
@@ -49,15 +53,16 @@ class UserCurrentView(AuthRequiredMixin, View):
 class UserCreate(View):
     @request_schema(NewUserSchema)
     async def post(self):
-        admin = await self.store.user.create_user(
+        user = await self.store.user.create_user(
             login=self.data["login"],
             password=self.data["password"],
             nickname=self.data["nickname"],
         )
+        await aios.mkdir(join(dirname(__file__), "..", "storage", f"{user.id}"))
         return json_response(
             data={
-                "id": admin.id,
-                "login": admin.login,
-                "nickname": admin.nickname,
+                "id": user.id,
+                "login": user.login,
+                "nickname": user.nickname,
             }
         )

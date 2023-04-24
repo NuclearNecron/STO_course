@@ -34,6 +34,6 @@ def error_json_response(
     )
 
 
-class GameState(Enum):
+class AccessState(Enum):
     READ = "READ"
     WRITE = "WRITE"

@@ -17,7 +17,6 @@ class DocumentModel(db):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
-    path = Column(String, nullable=False)
     owner_id = Column(
         Integer, ForeignKey("user.id", ondelete="cascade"), nullable=False
     )
@@ -40,7 +39,6 @@ class DocumentModel(db):
         return DocumentDC(
             id=self.id,
             name=self.name,
-            path=self.path,
             owner_id=self.owner_id,
             last_edited=self.last_edited,
         )
@@ -63,7 +61,7 @@ class UserDocModel(db):
     user = relationship(
         "UserModel",
         back_populates="userdocs",
-        foreign_keys="UserModel.user_id",
+        foreign_keys="UserDocModel.user_id",
     )
     doc = relationship(
         "DocumentModel",

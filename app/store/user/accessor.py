@@ -4,7 +4,7 @@ from hashlib import sha256
 from sqlalchemy import select
 
 from app.base.base_accessor import BaseAccessor
-from app.user.dataclasses import UserDC
+from app.user.dataclasses import UserDC, UserforRequest
 from app.user.models import UserModel
 
 if typing.TYPE_CHECKING:
@@ -28,7 +28,7 @@ class UserAccessor(BaseAccessor):
 
     async def create_user(
         self, login: str, password: str, nickname: str
-    ) -> UserDC:
+    ) -> UserforRequest:
         async with self.app.database.session() as session:
             user = UserModel(
                 login=login,
@@ -37,4 +37,6 @@ class UserAccessor(BaseAccessor):
             )
             session.add(user)
             await session.commit()
-            return UserDC(id=user.id, login=user.login, nickname=nickname)
+            return UserforRequest(
+                id=user.id, login=user.login, nickname=nickname
+            )

@@ -6,7 +6,6 @@ from datetime import datetime
 class DocumentDC:
     id: int
     name: str
-    path: str
     owner_id: int
     last_edited: datetime
 
@@ -17,3 +16,17 @@ class UserDocDC:
     user_id: int
     doc_id: int
     access: str
+
+
+@dataclass
+class UserforDoc:
+    id: int
+    nickname: str
+
+
+@dataclass
+class fullDoc:
+    id: int
+    name: str
+    owner: UserforDoc
+    last_edited: datetime

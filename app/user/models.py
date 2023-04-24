@@ -19,5 +19,5 @@ class UserModel(db):
     userdocs = relationship(
         "UserDocModel",
         back_populates="user",
-        foreign_keys="UserModel.user_id",
+        foreign_keys="UserDocModel.user_id",
     )

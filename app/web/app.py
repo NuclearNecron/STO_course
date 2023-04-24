@@ -5,6 +5,7 @@ from aiohttp.web import (
     View as AiohttpView,
     Request as AiohttpRequest,
 )
+from aiohttp_apispec import setup_aiohttp_apispec
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from app.store import setup_store, Store
@@ -62,6 +63,7 @@ def setup_app(config_path: str) -> Application:
     api_doc(
         app, config_path="swagger.json", url_prefix="/api/doc", title="API docs"
     )
+    setup_aiohttp_apispec(app)
     register_urls(app)
     setup_store(app)
     return app

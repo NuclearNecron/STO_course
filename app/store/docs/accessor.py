@@ -8,21 +8,18 @@ from sqlalchemy import select, desc, update, delete, func
 from sqlalchemy.orm import selectinload
 
 from app.base.base_accessor import BaseAccessor
-from app.docs.dataclasses import DocumentDC, UserDocDC
+from app.docs.dataclasses import DocumentDC, UserDocDC, fullDoc, UserforDoc
 from app.docs.models import DocumentModel, UserDocModel
 
 
 class DocsAccessor(BaseAccessor):
     async def create_doc(
-        self, name: str, path: str, owner_id: int, timestamp: datetime
+        self, name: str, owner_id: int, timestamp: datetime = datetime.now()
     ) -> DocumentDC | None:
         try:
             async with self.app.database.session() as session:
                 new_doc = DocumentModel(
-                    name=name,
-                    path=path,
-                    owner_id=owner_id,
-                    last_edited=timestamp,
+                    name=name, owner_id=owner_id, last_edited=timestamp
                 )
                 session.add(new_doc)
                 await session.commit()
@@ -52,50 +49,67 @@ class DocsAccessor(BaseAccessor):
         except sqlalchemy.exc.IntegrityError:
             return None
 
-    async def get_doc(self, doc_id: int) -> DocumentDC | None:
+    async def get_doc(self, doc_id: int) -> fullDoc | None:
         try:
             async with self.app.database.session() as session:
                 query = (
                     select(DocumentModel)
-                    .where(DocumentModel.id == doc_id)
+                    .where(DocumentModel.id == doc_id).options(selectinload(DocumentModel.owner))
                     .limit(1)
                 )
                 res = await session.scalars(query)
                 result = res.one_or_none()
                 if result:
-                    return result.to_dc()
+                    return fullDoc(
+                            id=result.id,
+                            name=result.name,
+                            last_edited=result.last_edited,
+                            owner=UserforDoc(
+                                id=result.owner.id, nickname=result.owner.nickname
+                            ),
+                        )
                 else:
                     return None
         except sqlalchemy.exc.IntegrityError:
             return None
 
-    async def get_list_docs(self, user_id: int) -> List[DocumentDC] | None:
+    async def get_list_docs(self, user_id: int) -> List[fullDoc] | None:
         try:
             async with self.app.database.session() as session:
                 query = (
                     select(UserDocModel)
                     .where(UserDocModel.user_id == user_id)
                     .options(selectinload(UserDocModel.doc))
-                    .limit(1)
+                    .options(selectinload(UserDocModel.user))
                 )
                 res = await session.scalars(query)
                 results = res.all()
                 if results:
-                    return [result.doc.to_dc() for result in results]
+                    return [
+                        fullDoc(
+                            id=result.doc.id,
+                            name=result.doc.name,
+                            last_edited=result.doc.last_edited,
+                            owner=UserforDoc(
+                                id=result.user.id, nickname=result.user.nickname
+                            ),
+                        )
+                        for result in results
+                    ]
                 else:
                     return None
         except sqlalchemy.exc.IntegrityError:
             return None
 
     async def update_doc(
-        self, name: str, path: str, timestamp: datetime, doc_id: int
+        self, name: str, timestamp: datetime, doc_id: int
     ) -> bool | None:
         try:
             async with self.app.database.session() as session:
                 query = (
                     update(DocumentModel)
                     .where(DocumentModel.id == doc_id)
-                    .values(name=name, path=path, last_edited=timestamp)
+                    .values(name=name, last_edited=timestamp)
                 )
                 await session.execute(query)
                 await session.commit()
@@ -165,6 +179,7 @@ class DocsAccessor(BaseAccessor):
         self, user_id: int, doc_id: int
     ) -> UserDocDC | None:
         try:
+
             async with self.app.database.session() as session:
                 query = (
                     select(UserDocModel)
@@ -177,6 +192,7 @@ class DocsAccessor(BaseAccessor):
                 res = await session.scalars(query)
                 result = res.one_or_none()
                 if result:
+                    print(111)
                     return result.to_dc()
                 else:
                     return None

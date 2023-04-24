@@ -4,6 +4,7 @@ from hashlib import sha256
 from aiohttp_session import Session
 
 
+@dataclass
 class UserforRequest:
     id: int
     login: str
