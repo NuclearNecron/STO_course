@@ -8,7 +8,13 @@ from sqlalchemy import select, desc, update, delete, func
 from sqlalchemy.orm import selectinload
 
 from app.base.base_accessor import BaseAccessor
-from app.docs.dataclasses import DocumentDC, UserDocDC, fullDoc, UserforDoc
+from app.docs.dataclasses import (
+    DocumentDC,
+    UserDocDC,
+    fullDoc,
+    UserforDoc,
+    fullAccess,
+)
 from app.docs.models import DocumentModel, UserDocModel
 
 
@@ -54,20 +60,21 @@ class DocsAccessor(BaseAccessor):
             async with self.app.database.session() as session:
                 query = (
                     select(DocumentModel)
-                    .where(DocumentModel.id == doc_id).options(selectinload(DocumentModel.owner))
+                    .where(DocumentModel.id == doc_id)
+                    .options(selectinload(DocumentModel.owner))
                     .limit(1)
                 )
                 res = await session.scalars(query)
                 result = res.one_or_none()
                 if result:
                     return fullDoc(
-                            id=result.id,
-                            name=result.name,
-                            last_edited=result.last_edited,
-                            owner=UserforDoc(
-                                id=result.owner.id, nickname=result.owner.nickname
-                            ),
-                        )
+                        id=result.id,
+                        name=result.name,
+                        last_edited=result.last_edited,
+                        owner=UserforDoc(
+                            id=result.owner.id, nickname=result.owner.nickname
+                        ),
+                    )
                 else:
                     return None
         except sqlalchemy.exc.IntegrityError:
@@ -192,8 +199,35 @@ class DocsAccessor(BaseAccessor):
                 res = await session.scalars(query)
                 result = res.one_or_none()
                 if result:
-                    print(111)
                     return result.to_dc()
+                else:
+                    return None
+        except sqlalchemy.exc.IntegrityError:
+            return None
+
+    async def get_accesses_to_doc(self, doc_id: int) -> list[fullAccess] | None:
+        try:
+
+            async with self.app.database.session() as session:
+                query = (
+                    select(UserDocModel)
+                    .where((UserDocModel.doc_id == doc_id))
+                    .options(selectinload(UserDocModel.user))
+                )
+                res = await session.scalars(query)
+                results = res.all()
+                if results:
+                    return [
+                        fullAccess(
+                            id=result.id,
+                            doc_id=result.doc_id,
+                            access=result.access,
+                            user=UserforDoc(
+                                id=result.user.id, nickname=result.user.nickname
+                            ),
+                        )
+                        for result in results
+                    ]
                 else:
                     return None
         except sqlalchemy.exc.IntegrityError:

@@ -2,6 +2,7 @@ from aiohttp.web_exceptions import (
     HTTPForbidden,
     HTTPUnauthorized,
     HTTPBadRequest,
+    HTTPConflict,
 )
 from aiohttp_apispec import (
     request_schema,
@@ -58,6 +59,8 @@ class UserCreate(View):
             password=self.data["password"],
             nickname=self.data["nickname"],
         )
+        if user is None:
+            raise HTTPConflict
         await aios.mkdir(join(dirname(__file__), "..", "storage", f"{user.id}"))
         return json_response(
             data={

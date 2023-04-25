@@ -6,14 +6,16 @@ from ast import literal_eval
 from aiohttp.web_exceptions import (
     HTTPUnauthorized,
     HTTPBadRequest,
-    HTTPConflict, HTTPForbidden,
+    HTTPConflict,
+    HTTPForbidden,
+    HTTPNotFound,
 )
 from aiohttp.web_fileresponse import FileResponse
 from aiohttp_apispec import request_schema
 import aiofiles
 import aiofiles.os as aios
 
-from app.docs.schemas import NewDocSchema
+from app.docs.schemas import NewDocSchema, ConnectionSchema
 from app.web.app import View
 from app.web.mixin import AuthRequiredMixin
 from app.web.utils import json_response, AccessState
@@ -86,17 +88,21 @@ class GetFileView(AuthRequiredMixin, View):
             raise HTTPBadRequest
         doc_db = await self.store.docs.get_doc(doc_id)
         if doc_db is None:
-            raise HTTPBadRequest
-        ownership = await self.store.docs.get_user_access_to_doc(self.request.user.id,doc_id)
+            raise HTTPNotFound
+        ownership = await self.store.docs.get_user_access_to_doc(
+            self.request.user.id, doc_id
+        )
         if ownership is None:
             raise HTTPForbidden
-        return FileResponse(path=join(
+        return FileResponse(
+            path=join(
                 dirname(__file__),
                 "..",
                 "storage",
                 f"{self.request.user.id}",
                 f"{doc_db.name}.txt",
-            ))
+            )
+        )
 
 
 class ManageDocView(AuthRequiredMixin, View):
@@ -109,11 +115,14 @@ class ManageDocView(AuthRequiredMixin, View):
             raise HTTPBadRequest
         doc_db = await self.store.docs.get_doc(doc_id)
         if doc_db is None:
-            raise HTTPBadRequest
-        ownership = await self.store.docs.get_user_access_to_doc(self.request.user.id,doc_id)
+            raise HTTPNotFound
+        ownership = await self.store.docs.get_user_access_to_doc(
+            self.request.user.id, doc_id
+        )
         if ownership is None:
             raise HTTPForbidden
-        return json_response(data={
+        return json_response(
+            data={
                 "id": doc_db.id,
                 "name": doc_db.name,
                 "last_edited": str(doc_db.last_edited),
@@ -121,17 +130,16 @@ class ManageDocView(AuthRequiredMixin, View):
                     "id": doc_db.owner.id,
                     "nickname": doc_db.owner.nickname,
                 },
+            }
+        )
 
-        })
-
-    # @request_schema(NewDocSchema)
     async def put(self):
         if self.request.user is None:
             raise HTTPUnauthorized
         reqdata = await self.request.post()
-        bytearray = reqdata['data']
-        new_data = literal_eval(bytearray.decode('utf-8'))
-        file = reqdata['text']
+        bytearray = reqdata["data"]
+        new_data = literal_eval(bytearray.decode("utf-8"))
+        file = reqdata["text"]
         bytefile = file.file.read()
         new_text = bytefile.decode("utf-8")
         try:
@@ -140,29 +148,40 @@ class ManageDocView(AuthRequiredMixin, View):
             raise HTTPBadRequest
         old_doc = await self.store.docs.get_doc(doc_id)
         if old_doc is None:
-            raise HTTPBadRequest
-        ownership = await self.store.docs.get_user_access_to_doc(self.request.user.id,doc_id)
+            raise HTTPNotFound
+        ownership = await self.store.docs.get_user_access_to_doc(
+            self.request.user.id, doc_id
+        )
         if ownership is None or ownership.access != AccessState.WRITE.value:
             raise HTTPForbidden
-        upd_doc = await self.store.docs.update_doc(
-            name=new_data["name"],
-            timestamp=datetime.strptime(new_data["timestamp"],'%Y-%m-%d %H:%M:%S.%f'),
-            doc_id=int(doc_id))
-        if upd_doc is None:
+        try:
+            upd_doc = await self.store.docs.update_doc(
+                name=new_data["name"],
+                timestamp=datetime.strptime(
+                    new_data["timestamp"], "%Y-%m-%d %H:%M:%S.%f"
+                ),
+                doc_id=int(doc_id),
+            )
+            if upd_doc is None:
+                raise HTTPBadRequest
+        except:
             raise HTTPBadRequest
-        await aios.rename(join(
+        await aios.rename(
+            join(
                 dirname(__file__),
                 "..",
                 "storage",
                 f"{old_doc.owner.id}",
                 f"{old_doc.name}.txt",
-            ),join(
+            ),
+            join(
                 dirname(__file__),
                 "..",
                 "storage",
                 f"{old_doc.owner.id}",
                 f"""{new_data["name"]}.txt""",
-            ))
+            ),
+        )
 
         async with aiofiles.open(
             join(
@@ -176,29 +195,204 @@ class ManageDocView(AuthRequiredMixin, View):
         ) as editing:
             await editing.truncate(0)
             await editing.write(new_text)
-        return json_response(data={
-            "id": doc_id,
-            "name": new_data["name"],
-            "last_edited": new_data["timestamp"],
-            "owner": {
-                "id": old_doc.owner.id,
-                "nickname": old_doc.owner.nickname,
-            },
-        })
+        return json_response(
+            data={
+                "id": doc_id,
+                "name": new_data["name"],
+                "last_edited": new_data["timestamp"],
+                "owner": {
+                    "id": old_doc.owner.id,
+                    "nickname": old_doc.owner.nickname,
+                },
+            }
+        )
 
     async def delete(self):
-        pass
+        if self.request.user is None:
+            raise HTTPUnauthorized
+        try:
+            doc_id = int(self.request.rel_url.name)
+        except:
+            raise HTTPBadRequest
+        doc = await self.store.docs.get_doc(doc_id)
+        if doc is None:
+            raise HTTPNotFound
+        ownership = await self.store.docs.check_ownership(
+            doc_id, self.request.user.id
+        )
+        if ownership is None:
+            raise HTTPForbidden
+        await self.store.docs.delete_doc(doc_id)
+        await aios.remove(
+            join(
+                dirname(__file__),
+                "..",
+                "storage",
+                f"{doc.owner.id}",
+                f"{doc.name}.txt",
+            )
+        )
+        return json_response(data={"result": "succesful"})
 
 
 class ManageShareView(AuthRequiredMixin, View):
+    @request_schema(ConnectionSchema)
     async def post(self):
-        pass
+        if self.request.user is None:
+            raise HTTPUnauthorized
+        try:
+            doc_id = int(self.request.rel_url.name)
+        except:
+            raise HTTPBadRequest
+        newconnectiondata = self.data
+        doc = await self.store.docs.get_doc(doc_id)
+        if doc is None:
+            raise HTTPNotFound
+        ownership = await self.store.docs.check_ownership(
+            doc_id, self.request.user.id
+        )
+        if ownership is None:
+            raise HTTPForbidden
+        user = await self.store.user.get_by_id(newconnectiondata["user"])
+        if user is None:
+            raise HTTPNotFound
+        if AccessState.READ.value == newconnectiondata["rights"].upper():
+            accesstype = AccessState.READ.value
+        elif AccessState.WRITE.value == newconnectiondata["rights"].upper():
+            accesstype = AccessState.WRITE.value
+        else:
+            raise HTTPBadRequest
+        newconnection = await self.store.docs.add_user_to_doc(
+            accesstype, user.id, doc_id
+        )
+        if newconnection is None:
+            raise HTTPConflict
+        return json_response(
+            data={
+                "user": {"id": user.id, "nickname": user.nickname},
+                "doc_id": doc_id,
+                "rights": accesstype,
+            }
+        )
 
+    @request_schema(ConnectionSchema)
     async def put(self):
-        pass
+        if self.request.user is None:
+            raise HTTPUnauthorized
+        try:
+            doc_id = int(self.request.rel_url.name)
+        except:
+            raise HTTPBadRequest
+        newconnectiondata = self.data
+        doc = await self.store.docs.get_doc(doc_id)
+        if doc is None:
+            raise HTTPNotFound
+        ownership = await self.store.docs.check_ownership(
+            doc_id, self.request.user.id
+        )
+        if ownership is None:
+            raise HTTPForbidden
+        user = await self.store.user.get_by_id(newconnectiondata["user"])
+        if user is None:
+            raise HTTPNotFound
+        if AccessState.READ.value == newconnectiondata["rights"].upper():
+            accesstype = AccessState.READ.value
+        elif AccessState.WRITE.value == newconnectiondata["rights"].upper():
+            accesstype = AccessState.WRITE.value
+        else:
+            raise HTTPBadRequest
+        newconnection = await self.store.docs.update_user_access_to_doc(
+            accesstype, user.id, doc_id
+        )
+        return json_response(
+            data={
+                "user": {"id": user.id, "nickname": user.nickname},
+                "doc_id": doc_id,
+                "rights": accesstype,
+            }
+        )
 
     async def get(self):
-        pass
+        if self.request.user is None:
+            raise HTTPUnauthorized
+        try:
+            doc_id = int(self.request.rel_url.name)
+        except:
+            raise HTTPBadRequest
+        doc = await self.store.docs.get_doc(doc_id)
+        if doc is None:
+            raise HTTPNotFound
+        ownership = await self.store.docs.get_user_access_to_doc(
+            self.request.user.id, doc_id
+        )
+        if ownership is None:
+            raise HTTPForbidden
+        try:
+            user_id = self.request.query["userId"]
+            user = await self.store.user.get_by_id(int(user_id))
+            if user is None:
+                raise HTTPNotFound
+            connections = await self.store.docs.get_user_access_to_doc(
+                user.id, doc_id
+            )
+            if connections is None:
+                raise HTTPNotFound
+            return json_response(
+                data={
+                    "result": [
+                        {
+                            "user": {"id": user.id, "nickname": user.nickname},
+                            "doc_id": doc_id,
+                            "rights": connections.access,
+                        }
+                    ]
+                }
+            )
+        except KeyError:
+            connections = await self.store.docs.get_accesses_to_doc(
+                doc_id=doc_id
+            )
+            return json_response(
+                data={
+                    "result": [
+                        {
+                            "user": {
+                                "id": connection.user.id,
+                                "nickname": connection.user.nickname,
+                            },
+                            "doc_id": doc_id,
+                            "rights": connection.access,
+                        }
+                        for connection in connections
+                    ]
+                }
+            )
 
     async def delete(self):
-        pass
+        if self.request.user is None:
+            raise HTTPUnauthorized
+        try:
+            user_id = self.request.query["userId"]
+            doc_id = int(self.request.rel_url.name)
+        except:
+            raise HTTPBadRequest
+        doc = await self.store.docs.get_doc(doc_id)
+        if doc is None:
+            raise HTTPNotFound
+        if int(user_id) == self.request.user.id:
+            raise HTTPBadRequest
+        ownership = await self.store.docs.check_ownership(
+            doc_id, self.request.user.id
+        )
+        if ownership is None:
+            raise HTTPForbidden
+        user = await self.store.user.get_by_id(int(user_id))
+        if user is None:
+            raise HTTPNotFound
+        connection = await self.store.docs.get_user_access_to_doc(
+            user.id, doc_id
+        )
+        if connection is None:
+            raise HTTPNotFound
+        await self.store.docs.remove_user_access(user.id, doc_id)
+        return json_response(data={"status": "success"})

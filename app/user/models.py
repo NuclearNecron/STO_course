@@ -9,7 +9,7 @@ class UserModel(db):
     id = Column(Integer, primary_key=True, autoincrement=True)
     nickname = Column(String, unique=True, nullable=False)
     login = Column(String, unique=True, nullable=False)
-    password = Column(String, unique=True, nullable=False)
+    password = Column(String, nullable=False)
 
     doc = relationship(
         "DocumentModel",

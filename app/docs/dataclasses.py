@@ -30,3 +30,11 @@ class fullDoc:
     name: str
     owner: UserforDoc
     last_edited: datetime
+
+
+@dataclass
+class fullAccess:
+    id: int
+    user: UserforDoc
+    doc_id: int
+    access: str
