@@ -3,7 +3,9 @@ import typing
 
 from aiohttp.web_exceptions import HTTPException, HTTPUnprocessableEntity
 from aiohttp.web_middlewares import middleware
+from aiohttp_session import get_session
 
+from app.core.utils import error_json_response
 
 if typing.TYPE_CHECKING:
     from app.core.application import Application, Request
@@ -11,6 +13,10 @@ if typing.TYPE_CHECKING:
 
 @middleware
 async def auth_middleware(request: "Request", handler: callable):
+    session = await get_session(request)
+    if session:
+        request.user_credentials = session["user"]["id"]
+    # next line for test purposes only
     request.user_credentials = f"USER_ID: 1"
     return await handler(request)
 
@@ -21,7 +27,6 @@ HTTP_ERROR_CODES = {
     403: "forbidden",
     404: "not_found",
     405: "not_implemented",
-    409: "conflict",
     500: "internal_server_error",
 }
 
@@ -32,26 +37,23 @@ async def error_handling_middleware(request: "Request", handler):
         response = await handler(request)
         return response
     except HTTPUnprocessableEntity as e:
-        # return error_json_response(
-        #     http_status=400,
-        #     status="bad_request",
-        #     message=e.reason,
-        #     data=json.loads(e.text),
-        # )
-        return
+        return error_json_response(
+            http_status=400,
+            status="bad_request",
+            message=e.reason,
+            data=json.loads(e.text),
+        )
     except HTTPException as e:
-        # return error_json_response(
-        #     http_status=e.status,
-        #     status=HTTP_ERROR_CODES[e.status],
-        #     message=str(e),
-        # )
-        return
+        return error_json_response(
+            http_status=e.status,
+            status=HTTP_ERROR_CODES[e.status],
+            message=str(e),
+        )
     except Exception as e:
         request.app.logger.error("Exception", exc_info=e)
-        # return error_json_response(
-        #     http_status=500, status="internal server error", message=str(e)
-        # )
-        return
+        return error_json_response(
+            http_status=500, status="internal server error", message=str(e)
+        )
 
 
 def setup_middlewares(app: "Application"):

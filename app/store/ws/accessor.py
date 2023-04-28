@@ -8,6 +8,7 @@ from collections import defaultdict
 import marshmallow.exceptions
 from aiohttp import WSMessage
 from aiohttp.web import WebSocketResponse
+from aiohttp.web_exceptions import HTTPUnauthorized
 
 from app.base.base_accessor import BaseAccessor
 from app.core.application import Request
@@ -36,8 +37,10 @@ class WSAccessor(BaseAccessor):
 
     async def handle_request(self, request: "Request"):
         """Обработка запроса на обновление соединения до WebSocket"""
-        # TODO: авторизация?
+        # TODO: авторизовать запрос
         user, doc = request.user_credentials, request.match_info["document_id"]
+        if user is None:
+            raise HTTPUnauthorized
         ws_response = WebSocketResponse(heartbeat=self._heartbeat)
         await ws_response.prepare(request)
         ws_pipe_key = str(uuid.uuid4())
@@ -69,24 +72,43 @@ class WSAccessor(BaseAccessor):
                 )
                 return
 
-    async def close(self, connection_key: USER_DOC_KEY, ws_pipe_key: str):
+    async def close(self, connection_key: USER_DOC_KEY, ws_pipe_key: str, data: str | None = None):
         """Закрытие WebSocket соединения"""
         try:
             connection = self._connections[connection_key].pop(ws_pipe_key)
             if len(self._connections[connection_key]) == 0:
                 self._connections.pop(connection_key)
+            await self.push_selected(selected_connections=[connection_key], data=data)
             await connection.ws_connection.close()
         except KeyError:
             return
 
-    async def push_selected(
-        self, selected_connections: list[USER_DOC_KEY], data: str
-    ):
-        """Отправка сообщения по WebSocket соединениям с выбранными ключами"""
+    async def disconnect_user(self, connection_key: USER_DOC_KEY, data: str | None = None):
+        """Отключение пользователя от документа"""
         tg: TaskGroup
         async with asyncio.TaskGroup() as tg:
-            for connection_key in selected_connections:
-                tg.create_task(self._push(connection_key, data))
+            for ws_pipe_key in self._connections[connection_key].keys():
+                tg.create_task(self.close(connection_key, ws_pipe_key, data))
+        return
+
+    async def disconnect_all_users_from_document(self, document_id: str, data: str | None = None):
+        """Отключение всех пользователей от данного документа"""
+        tg: TaskGroup
+        async with asyncio.TaskGroup() as tg:
+            for user, doc in self._connections.keys():
+                if doc == document_id:
+                    tg.create_task(self.disconnect_user((user, doc), data))
+        return
+
+    async def push_selected(
+        self, selected_connections: list[USER_DOC_KEY], data: str | None = None
+    ):
+        """Отправка сообщения по WebSocket соединениям с выбранными ключами"""
+        if data:
+            tg: TaskGroup
+            async with asyncio.TaskGroup() as tg:
+                for connection_key in selected_connections:
+                    tg.create_task(self._push(connection_key, data))
         return
 
     async def push_selected_doc(self, document: str, data: str):

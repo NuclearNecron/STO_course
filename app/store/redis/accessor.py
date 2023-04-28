@@ -1,5 +1,4 @@
 from app.base.base_accessor import BaseAccessor
-from app.store.ws.schemes import EventSchema
 
 
 class RedisAccessor(BaseAccessor):
@@ -11,3 +10,7 @@ class RedisAccessor(BaseAccessor):
     async def get_all_updates(self, document: str):
         raw_res = await self.app.redis.connection.lrange(document, 0, -1)
         return raw_res
+
+    async def delete_document(self, document: str):
+        await self.app.redis.connection.delete(document)
+        return

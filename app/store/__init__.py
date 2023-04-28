@@ -1,5 +1,6 @@
 import typing
 
+from app.grpcio.server import gRPCServer
 from app.store.redis.database import RedisDB
 
 if typing.TYPE_CHECKING:
@@ -19,4 +20,9 @@ def setup_store(app: "Application"):
     app.redis = RedisDB(app)
     app.on_startup.append(app.redis.connect)
     app.on_cleanup.append(app.redis.disconnect)
+
+    app.grpc_server = gRPCServer(app)
+    app.on_startup.append(app.grpc_server.serve)
+    app.on_cleanup.append(app.grpc_server.finish)
+
     app.store = Store(app)

@@ -16,8 +16,14 @@ class RedisConfig:
 
 
 @dataclass
+class SessionConfig:
+    key: str | None = None
+
+
+@dataclass
 class Config:
     redis: RedisConfig | None = None
+    session: SessionConfig | None = None
 
 
 def setup_config(app: "Application", config_path: str):
@@ -29,5 +35,8 @@ def setup_config(app: "Application", config_path: str):
             host=raw_config["redis"]["host"],
             port=raw_config["redis"]["port"],
             db=raw_config["redis"]["db"],
-        )
+        ),
+        session=SessionConfig(
+            key=raw_config["session"]["key"]
+        ),
     )
