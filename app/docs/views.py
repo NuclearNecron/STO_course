@@ -19,7 +19,9 @@ from app.docs.schemas import NewDocSchema, ConnectionSchema
 from app.web.app import View
 from app.web.mixin import AuthRequiredMixin
 from app.web.utils import json_response, AccessState
-
+import grpc
+import app.store.grpc.ws_backend_pb2 as backend_pb2
+import app.store.grpc.ws_backend_pb2_grpc as backend_pb2_grpc
 
 class CreateDocView(AuthRequiredMixin, View):
     @request_schema(NewDocSchema)
@@ -154,6 +156,9 @@ class ManageDocView(AuthRequiredMixin, View):
         )
         if ownership is None or ownership.access != AccessState.WRITE.value:
             raise HTTPForbidden
+        async with grpc.aio.insecure_channel('localhost:50051') as channel:
+            stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
+            await stub.SendTimestamp(backend_pb2.SendTimestampRequest(document_id=str(doc_id),timestamp=new_data["timestamp"]))
         try:
             upd_doc = await self.store.docs.update_doc(
                 name=new_data["name"],
@@ -195,6 +200,7 @@ class ManageDocView(AuthRequiredMixin, View):
         ) as editing:
             await editing.truncate(0)
             await editing.write(new_text)
+
         return json_response(
             data={
                 "id": doc_id,
@@ -232,6 +238,9 @@ class ManageDocView(AuthRequiredMixin, View):
                 f"{doc.name}.txt",
             )
         )
+        async with grpc.aio.insecure_channel('localhost:50051') as channel:
+            stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
+            await stub.HandleDelete(backend_pb2.HandleDeleteRequest(document_id=str(doc_id)))
         return json_response(data={"result": "succesful"})
 
 
@@ -394,5 +403,8 @@ class ManageShareView(AuthRequiredMixin, View):
         )
         if connection is None:
             raise HTTPNotFound
+        async with grpc.aio.insecure_channel('localhost:50051') as channel:
+            stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
+            await stub.RemoveAccess(backend_pb2.RemoveAccessRequest(document_id=str(doc_id),user_id=str(user.id)))
         await self.store.docs.remove_user_access(user.id, doc_id)
         return json_response(data={"status": "success"})
