@@ -1,3 +1,4 @@
+import json
 from asyncio import Task
 from datetime import datetime
 from os.path import join, dirname
@@ -51,8 +52,44 @@ class Handler:
                                 mode="r+",
                         ) as editing:
                             lines =  await editing.readlines()
-                            
+                            for change in doc.update:
+                                dict_change = json.loads(change)
+                                if dict_change["letter"]=="/n" and dict_change["insert"] == True:
+                                    temp = lines[dict_change["line"]][dict_change["symbol"]:]
+                                    lines[dict_change["line"]]=lines[dict_change["line"]][:dict_change["symbol"]]+"/n"
+                                    lines.insert(dict_change["line"]+1,temp)
+                                elif dict_change["symbol"]=="/n" and dict_change["insert"] == False:
+                                    lines[dict_change["line"]] = lines[dict_change["line"]][
+                                                                 :-2] + lines[dict_change["line"]+1]
+                                    lines.pop(dict_change["line"]+1)
+                                elif len(dict_change["letter"])>1 and dict_change["insert"] == True:
+                                    lines[dict_change["line"]] = lines[dict_change["line"]][:dict_change["symbol"]]+dict_change["letter"]+lines[dict_change["line"]][dict_change["symbol"]:]
+                                    await editing.truncate(0)
+                                    await editing.writelines(lines)
+                                    lines = await editing.readlines()
+                                elif len(dict_change["letter"])>1 and dict_change["insert"] == False:
+                                    removed_lines= dict_change["letter"].count("/n")
+                                    new_line = ""
+                                    for i in range(removed_lines):
+                                        new_line+= lines[dict_change["line"]+i]
+                                        lines.pop(dict_change["line"]+i)
+                                    new_line.replace(dict_change["letter"],"",1)
+                                    lines.insert(dict_change["line"])
+                                    await editing.truncate(0)
+                                    await editing.writelines(lines)
+                                    lines = await editing.readlines()
+                                elif dict_change["insert"]:
+                                    lines[dict_change["line"]] = lines[dict_change["line"]][
+                                                                 :dict_change["symbol"]] + dict_change["letter"]+lines[dict_change["line"]][
+                                                                 dict_change["symbol"]:]
+                                else:
+                                    lines[dict_change["line"]] = lines[dict_change["line"]][
+                                                                 :dict_change["symbol"]] + \
+                                                                 lines[dict_change["line"]][
+                                                                 dict_change["symbol"]+1:]
+                            await editing.truncate(0)
+                            await editing.writelines(lines)
+                        await self.app.store.docs.update_doc(current_doc.name,datetime.now(),current_doc.id)
                     except:
                         pass
-                pass
             await asyncio.sleep(600)
