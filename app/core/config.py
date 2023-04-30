@@ -1,8 +1,7 @@
+import typing
 from dataclasses import dataclass
 
 import yaml
-
-import typing
 
 if typing.TYPE_CHECKING:
     from app.core.application import Application
@@ -36,7 +35,5 @@ def setup_config(app: "Application", config_path: str):
             port=raw_config["redis"]["port"],
             db=raw_config["redis"]["db"],
         ),
-        session=SessionConfig(
-            key=raw_config["session"]["key"]
-        ),
+        session=SessionConfig(key=raw_config["session"]["key"]),
     )

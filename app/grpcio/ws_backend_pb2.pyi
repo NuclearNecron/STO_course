@@ -1,7 +1,14 @@
-from google.protobuf.internal import containers as _containers
+from typing import (
+    ClassVar as _ClassVar,
+    Iterable as _Iterable,
+    Mapping as _Mapping,
+    Optional as _Optional,
+    Union as _Union,
+)
+
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from google.protobuf.internal import containers as _containers
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -11,16 +18,28 @@ class GetUpdatesRequest(_message.Message):
 
 class GetUpdatesResponse(_message.Message):
     __slots__ = ["res"]
+
     class DocUpdates(_message.Message):
         __slots__ = ["document_id", "update"]
         DOCUMENT_ID_FIELD_NUMBER: _ClassVar[int]
         UPDATE_FIELD_NUMBER: _ClassVar[int]
         document_id: str
         update: _containers.RepeatedScalarFieldContainer[str]
-        def __init__(self, document_id: _Optional[str] = ..., update: _Optional[_Iterable[str]] = ...) -> None: ...
+        def __init__(
+            self,
+            document_id: _Optional[str] = ...,
+            update: _Optional[_Iterable[str]] = ...,
+        ) -> None: ...
     RES_FIELD_NUMBER: _ClassVar[int]
-    res: _containers.RepeatedCompositeFieldContainer[GetUpdatesResponse.DocUpdates]
-    def __init__(self, res: _Optional[_Iterable[_Union[GetUpdatesResponse.DocUpdates, _Mapping]]] = ...) -> None: ...
+    res: _containers.RepeatedCompositeFieldContainer[
+        GetUpdatesResponse.DocUpdates
+    ]
+    def __init__(
+        self,
+        res: _Optional[
+            _Iterable[_Union[GetUpdatesResponse.DocUpdates, _Mapping]]
+        ] = ...,
+    ) -> None: ...
 
 class HandleDeleteRequest(_message.Message):
     __slots__ = ["document_id"]
@@ -40,7 +59,9 @@ class RemoveAccessRequest(_message.Message):
     USER_ID_FIELD_NUMBER: _ClassVar[int]
     document_id: str
     user_id: str
-    def __init__(self, user_id: _Optional[str] = ..., document_id: _Optional[str] = ...) -> None: ...
+    def __init__(
+        self, user_id: _Optional[str] = ..., document_id: _Optional[str] = ...
+    ) -> None: ...
 
 class RemoveAccessResponse(_message.Message):
     __slots__ = ["status"]
@@ -54,7 +75,11 @@ class SendTimestampRequest(_message.Message):
     TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
     document_id: str
     timestamp: str
-    def __init__(self, document_id: _Optional[str] = ..., timestamp: _Optional[str] = ...) -> None: ...
+    def __init__(
+        self,
+        document_id: _Optional[str] = ...,
+        timestamp: _Optional[str] = ...,
+    ) -> None: ...
 
 class SendTimestampResponse(_message.Message):
     __slots__ = ["status"]

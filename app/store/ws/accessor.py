@@ -1,5 +1,4 @@
 import asyncio
-import json
 import typing
 import uuid
 from asyncio import Queue, TaskGroup
@@ -63,7 +62,9 @@ class WSAccessor(BaseAccessor):
         ].ws_connection:
             try:
                 event: Event = EventSchema().loads(message.data)
-                await self.app.store.redis.append_update(doc, EventSchema().dumps(event))
+                await self.app.store.redis.append_update(
+                    doc, EventSchema().dumps(event)
+                )
                 await self.push_selected_doc(doc, EventSchema().dumps(event))
             except marshmallow.exceptions.ValidationError as e:
                 await self.push_selected(
@@ -72,18 +73,27 @@ class WSAccessor(BaseAccessor):
                 )
                 return
 
-    async def close(self, connection_key: USER_DOC_KEY, ws_pipe_key: str, data: str | None = None):
+    async def close(
+        self,
+        connection_key: USER_DOC_KEY,
+        ws_pipe_key: str,
+        data: str | None = None,
+    ):
         """Закрытие WebSocket соединения"""
         try:
             connection = self._connections[connection_key].pop(ws_pipe_key)
             if len(self._connections[connection_key]) == 0:
                 self._connections.pop(connection_key)
-            await self.push_selected(selected_connections=[connection_key], data=data)
+            await self.push_selected(
+                selected_connections=[connection_key], data=data
+            )
             await connection.ws_connection.close()
         except KeyError:
             return
 
-    async def disconnect_user(self, connection_key: USER_DOC_KEY, data: str | None = None):
+    async def disconnect_user(
+        self, connection_key: USER_DOC_KEY, data: str | None = None
+    ):
         """Отключение пользователя от документа"""
         tg: TaskGroup
         async with asyncio.TaskGroup() as tg:
@@ -91,7 +101,9 @@ class WSAccessor(BaseAccessor):
                 tg.create_task(self.close(connection_key, ws_pipe_key, data))
         return
 
-    async def disconnect_all_users_from_document(self, document_id: str, data: str | None = None):
+    async def disconnect_all_users_from_document(
+        self, document_id: str, data: str | None = None
+    ):
         """Отключение всех пользователей от данного документа"""
         tg: TaskGroup
         async with asyncio.TaskGroup() as tg:

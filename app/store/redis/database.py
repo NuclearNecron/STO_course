@@ -16,7 +16,7 @@ class RedisDB:
             host=self.app.config.redis.host,
             port=self.app.config.redis.port,
             db=self.app.config.redis.db,
-            decode_responses=True
+            decode_responses=True,
         )
         self.app.logger.info(
             f"Ping Redis-server successfully: {await self.connection.ping()}"
