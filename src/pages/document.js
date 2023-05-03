@@ -1,11 +1,14 @@
 import '../App.css';
 import {useEffect, useRef, useState} from "react";
+import {useParams} from "react-router";
 import {TextField} from "@mui/material";
 import DocsWebSocket from "../DocsWS";
 import config from "../config";
 
 
 function Document() {
+
+    const {docId} = useParams();
 
     const [val, set_val] = useState("");
     const [have_doc, set_have_doc] = useState(false);
@@ -47,7 +50,7 @@ function Document() {
 
     const getDocument = async doc_id => {
         const raw_response = await fetch(
-            `http://${config.backend_addr}/doc/get/${doc_id}`,
+            `http://${config.backend_addr}/doc/get/${docId}`,
             {
                 credentials: "include",
             }
