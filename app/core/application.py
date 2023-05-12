@@ -52,11 +52,15 @@ class View(AiohttpView):
 app = Application()
 
 
-def setup_app(config_path: str) -> Application:
+def setup_app(
+    config_path: str,
+    redis_connect_on_startup: bool = False,
+    gRPC_serve_on_startup: bool = False,
+) -> Application:
     setup_logging(app)
     setup_config(app, config_path)
     session_setup(app, EncryptedCookieStorage(app.config.session.key))
     setup_routes(app)
     setup_middlewares(app)
-    setup_store(app)
+    setup_store(app, redis_connect_on_startup, gRPC_serve_on_startup)
     return app

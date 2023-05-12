@@ -19,7 +19,7 @@ class RedisDB:
             decode_responses=True,
         )
         self.app.logger.info(
-            f"Ping Redis-server successfully: {await self.connection.ping()}"
+            f"Ping Redis-server successfully: {await self.app.redis.connection.ping()}"
         )
 
     async def disconnect(self, *_: list, **__: dict):

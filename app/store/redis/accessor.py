@@ -44,4 +44,4 @@ class RedisAccessor(BaseAccessor):
         res = {}
         async for doc_key in self.app.redis.connection.scan_iter():
             res[doc_key] = await self.get_all_updates(document=doc_key)
-        return res if res else None
+        return res

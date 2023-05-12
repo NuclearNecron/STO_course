@@ -16,13 +16,19 @@ class Store:
         self.redis = RedisAccessor(app)
 
 
-def setup_store(app: "Application"):
-    app.redis = RedisDB(app)
-    app.on_startup.append(app.redis.connect)
-    app.on_cleanup.append(app.redis.disconnect)
+def setup_store(
+    app: "Application",
+    redis_connect_on_startup: bool | None,
+    gRPC_serve_on_startup: bool | None,
+):
+    if redis_connect_on_startup:
+        app.redis = RedisDB(app)
+        app.on_startup.append(app.redis.connect)
+        app.on_cleanup.append(app.redis.disconnect)
 
-    app.grpc_server = gRPCServer(app)
-    app.on_startup.append(app.grpc_server.serve)
-    app.on_cleanup.append(app.grpc_server.finish)
+    if gRPC_serve_on_startup:
+        app.grpc_server = gRPCServer(app)
+        app.on_startup.append(app.grpc_server.serve)
+        app.on_cleanup.append(app.grpc_server.finish)
 
     app.store = Store(app)

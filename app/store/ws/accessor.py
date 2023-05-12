@@ -11,8 +11,8 @@ from aiohttp.web_exceptions import HTTPUnauthorized
 
 from app.base.base_accessor import BaseAccessor
 from app.core.application import Request
-from app.store.ws.dataclasses import WSConnection, Event
-from app.store.ws.schemes import EventSchema
+from app.store.ws.utils import EventSchema
+from app.store.ws.utils import WSConnection, WSMessage
 
 if typing.TYPE_CHECKING:
     from app.core.application import Application
@@ -34,10 +34,23 @@ class WSAccessor(BaseAccessor):
         self._connections = defaultdict(dict)
         self._heartbeat = 20.0
 
-    async def handle_request(self, request: "Request"):
+    async def on_shutdown(self, app: "Application"):
+        await super().on_shutdown(app)
+        """Gracefully closes all opened WebSocket connections"""
+        tg: TaskGroup
+        async with asyncio.TaskGroup() as tg:
+            for connection_key in self._connections.keys():
+                tg.create_task(
+                    self.disconnect_user(connection_key=connection_key)
+                )
+        return
+
+    async def handle_request(self, request: "Request") -> WebSocketResponse:
         """Обработка запроса на обновление соединения до WebSocket"""
-        # TODO: авторизовать запрос
         user, doc = request.user_credentials, request.match_info["document_id"]
+        self.app.logger.info(
+            f"Попытка подключения: пользователь: {user}, документ: {doc}"
+        )
         if user is None:
             raise HTTPUnauthorized
         ws_response = WebSocketResponse(heartbeat=self._heartbeat)
@@ -61,7 +74,7 @@ class WSAccessor(BaseAccessor):
             ws_pipe_key
         ].ws_connection:
             try:
-                event: Event = EventSchema().loads(message.data)
+                event: WSMessage = EventSchema().loads(message.data)
                 await self.app.store.redis.append_update(
                     doc, EventSchema().dumps(event)
                 )
@@ -142,6 +155,3 @@ class WSAccessor(BaseAccessor):
                     tg.create_task(ws.ws_connection.send_str(data))
         except KeyError:
             return
-        # except ConnectionResetError:
-        #     self._connections.pop(connection_key)
-        #     return

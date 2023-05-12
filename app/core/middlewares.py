@@ -17,7 +17,7 @@ async def auth_middleware(request: "Request", handler: callable):
     if session:
         request.user_credentials = session["user"]["id"]
     # next line for test purposes only
-    request.user_credentials = f"USER_ID: 1"
+    # request.user_credentials = f"USER_ID: 1"
     return await handler(request)
 
 
