@@ -30,7 +30,7 @@ export default function RegPage() {
             })
         };
         fetch(
-            `http://${config.backend_addr}/user/create`,
+            `https://${config.backend_addr}/user/create`,
             requestOptions
         )
             .then(async response => {

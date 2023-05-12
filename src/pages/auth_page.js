@@ -17,16 +17,21 @@ export default function AuthPage() {
         localStorage.setItem(config.user_status, status)
     }
 
+    const set_user_id = id => {
+        localStorage.setItem(config.user_id, id)
+    }
+
     const submitHandler = e => {
         e.preventDefault();
         const data = new FormData(e.currentTarget);
         fetch(
-            `http://${config.backend_addr}/user/login`,
+            `https://${config.backend_addr}/user/login`,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json;charset=utf-8',
                 },
+                credentials: "include",
                 body: JSON.stringify({
                     login: data.get('login'),
                     password: data.get('password'),
@@ -35,8 +40,10 @@ export default function AuthPage() {
         )
             .then(async response => {
                 if (response.ok) {
-                    console.log(await response.json())
+                    response = await response.json()
+                    console.log(response)
                     set_user_status(true)
+                    set_user_id(response.data.id)
                 } else {
                     throw Error(`Something went wrong: code ${response.status}`)
                 }

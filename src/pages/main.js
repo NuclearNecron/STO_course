@@ -2,12 +2,15 @@ import Button from "@mui/material/Button";
 import "../App.css"
 import * as React from "react";
 import TextField from "@mui/material/TextField";
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import {useNavigate} from "react-router";
 import config from "../config";
+import DocsWebSocket from "../DocsWS";
 
 
 function Main() {
+
+    const socket = useRef()
 
     const navigate = useNavigate()
     const [doc_name_val, set_doc_name_val] = useState("");
@@ -16,7 +19,7 @@ function Main() {
     const create_doc = async () => {
         // TODO: создать новый документ
         fetch(
-            `http://${config.backend_addr}/doc/create`,
+            `https://${config.backend_addr}/doc/create`,
             {
                 body: JSON.stringify({
                     name: doc_name_val,
@@ -40,7 +43,9 @@ function Main() {
     }
 
     const get_docs_list = async () => {
-        fetch(`http://${config.backend_addr}/doc/list`)
+        fetch(`https://${config.backend_addr}/doc/list`, {
+            credentials: "include",
+        })
             .then(async response => {
                 if (response.ok) {
                     response = await response.json()
@@ -57,7 +62,16 @@ function Main() {
 
     useEffect(() => {
 
+        // socket.current = new DocsWebSocket(`ws://localhost:8080/connect/${1}?userID=${localStorage.getItem(config.user_id) || 88005553535}`, [], {
+        //     credentials: "include"
+        // })
+        // socket.current.onopen = null
+        // socket.current.onmessage_handler = null
+        // socket.current.onclose = null
+        // socket.current.onerror = null
+
         get_docs_list()
+
 
     }, [])
 

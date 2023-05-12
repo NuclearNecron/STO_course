@@ -8,7 +8,7 @@ import config from "../config";
 
 function Document() {
 
-    const {docId} = useParams();
+    const {docID} = useParams();
 
     const [val, set_val] = useState("");
     const [have_doc, set_have_doc] = useState(false);
@@ -50,7 +50,7 @@ function Document() {
 
     const getDocument = async doc_id => {
         const raw_response = await fetch(
-            `http://${config.backend_addr}/doc/get/${docId}`,
+            `https://${config.backend_addr}/doc/get/${docID}`,
             {
                 credentials: "include",
             }
@@ -65,14 +65,30 @@ function Document() {
 
     useEffect(() => {
 
-        getDocument(config.test_doc_id)
+        fetch(
+            `https://${config.backend_addr}/doc/get/${docID}`,
+            {
+                credentials: "include",
+            }
+        )
+            .then(async raw_response => {
+                if (raw_response.ok) {
+                    const response = await raw_response.json()
+                    console.log(response)
+                    // response выше имеет тип строки???
+                    set_val(response.data.res)
+                    set_have_doc(true)
+                } else {
+                    throw Error(`Something went wrong: code ${raw_response.status}`)
+                }
+            })
 
     }, [])
 
     useEffect(() => {
 
         if (have_doc) {
-            socket.current = new DocsWebSocket(`ws://${config.webscoket_addr}/connect/${config.test_doc_id}`)
+            socket.current = new DocsWebSocket(`ws://${config.webscoket_addr}/connect/${docID}?userID=${localStorage.getItem(config.user_id) || 88005553535}`)
             socket.current.onopen = onopen_handler
             socket.current.onmessage_handler = onmessage_handler
             socket.current.onclose = onclose_handler
