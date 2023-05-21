@@ -2,6 +2,8 @@ from aiohttp.web_app import Application
 
 __all__ = ("register_urls",)
 
+from aiohttp_cors import CorsConfig
+
 from app.docs.views import (
     CreateDocView,
     ListDocsView,

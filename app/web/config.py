@@ -22,9 +22,16 @@ class DatabaseConfig:
 
 
 @dataclass
+class GRPCConfig:
+    host: str
+    port: int
+
+
+@dataclass
 class Config:
     database: DatabaseConfig = None
     session: SessionConfig | None = None
+    grpc: GRPCConfig | None = None
 
 
 def setup_config(app: "Application", config_path: str):
@@ -35,4 +42,7 @@ def setup_config(app: "Application", config_path: str):
             key=raw_config["session"]["key"],
         ),
         database=DatabaseConfig(**raw_config["database"]),
+        grpc=GRPCConfig(
+            host=raw_config["grpc"]["host"], port=raw_config["grpc"]["port"]
+        ),
     )

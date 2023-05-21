@@ -9,6 +9,8 @@ from aiohttp_apispec import (
 )
 import aiofiles.os as aios
 from os.path import join, dirname
+
+from aiohttp_cors import CorsViewMixin
 from aiohttp_session import new_session
 
 from app.web.app import View
@@ -18,7 +20,7 @@ from app.web.utils import json_response
 from app.user.schemas import UserSchema, NewUserSchema
 
 
-class UserLoginView(View):
+class UserLoginView(CorsViewMixin, View):
     @request_schema(UserSchema)
     async def post(self):
         logindata = await self.store.user.get_by_login(self.data["login"])
@@ -38,7 +40,7 @@ class UserLoginView(View):
         raise HTTPForbidden
 
 
-class UserCurrentView(AuthRequiredMixin, View):
+class UserCurrentView(AuthRequiredMixin, CorsViewMixin, View):
     async def get(self):
         if self.request.user is not None:
             return json_response(
@@ -51,7 +53,7 @@ class UserCurrentView(AuthRequiredMixin, View):
         raise HTTPUnauthorized
 
 
-class UserCreate(View):
+class UserCreate(CorsViewMixin, View):
     @request_schema(NewUserSchema)
     async def post(self):
         user = await self.store.user.create_user(

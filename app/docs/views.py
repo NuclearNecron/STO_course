@@ -14,6 +14,7 @@ from aiohttp.web_fileresponse import FileResponse
 from aiohttp_apispec import request_schema
 import aiofiles
 import aiofiles.os as aios
+from aiohttp_cors import CorsViewMixin
 
 from app.docs.schemas import NewDocSchema, ConnectionSchema
 from app.web.app import View
@@ -23,7 +24,8 @@ import grpc
 import app.store.grpc.ws_backend_pb2 as backend_pb2
 import app.store.grpc.ws_backend_pb2_grpc as backend_pb2_grpc
 
-class CreateDocView(AuthRequiredMixin, View):
+
+class CreateDocView(AuthRequiredMixin, CorsViewMixin, View):
     @request_schema(NewDocSchema)
     async def post(self):
         if self.request.user is None:
@@ -57,7 +59,7 @@ class CreateDocView(AuthRequiredMixin, View):
         )
 
 
-class ListDocsView(AuthRequiredMixin, View):
+class ListDocsView(AuthRequiredMixin, CorsViewMixin, View):
     async def get(self):
         if self.request.user is None:
             raise HTTPUnauthorized
@@ -80,7 +82,7 @@ class ListDocsView(AuthRequiredMixin, View):
         )
 
 
-class GetFileView(AuthRequiredMixin, View):
+class GetFileView(AuthRequiredMixin, CorsViewMixin, View):
     async def get(self):
         if self.request.user is None:
             raise HTTPUnauthorized
@@ -96,18 +98,34 @@ class GetFileView(AuthRequiredMixin, View):
         )
         if ownership is None:
             raise HTTPForbidden
-        return FileResponse(
-            path=join(
+        async with aiofiles.open(
+            join(
                 dirname(__file__),
                 "..",
                 "storage",
-                f"{self.request.user.id}",
-                f"{doc_db.name}.txt",
-            )
+                f"{doc_db.owner.id}",
+                f"""{doc_db.name}.txt""",
+            ),
+            mode="r+",
+        ) as editing:
+            lines = await editing.read()
+        # return FileResponse(
+        #     path=join(
+        #         dirname(__file__),
+        #         "..",
+        #         "storage",
+        #         f"{self.request.user.id}",
+        #         f"{doc_db.name}.txt",
+        #     )
+        # )
+        return json_response(
+            data={
+                "res": lines,
+            }
         )
 
 
-class ManageDocView(AuthRequiredMixin, View):
+class ManageDocView(AuthRequiredMixin, CorsViewMixin, View):
     async def get(self):
         if self.request.user is None:
             raise HTTPUnauthorized
@@ -138,12 +156,15 @@ class ManageDocView(AuthRequiredMixin, View):
     async def put(self):
         if self.request.user is None:
             raise HTTPUnauthorized
-        reqdata = await self.request.post()
-        bytearray = reqdata["data"]
-        new_data = literal_eval(bytearray.decode("utf-8"))
-        file = reqdata["text"]
-        bytefile = file.file.read()
-        new_text = bytefile.decode("utf-8")
+        # reqdata = await self.request.post()
+        # bytearray = reqdata["data"]
+        # new_data = literal_eval(bytearray.decode("utf-8"))
+        # file = reqdata["text"]
+        # # bytefile = file.file.read()
+        # new_text = file.decode("utf-8")
+        request_data = self.data
+        new_data = request_data["data"]
+        new_text = request_data["text"]
         try:
             doc_id = int(self.request.rel_url.name)
         except:
@@ -156,9 +177,15 @@ class ManageDocView(AuthRequiredMixin, View):
         )
         if ownership is None or ownership.access != AccessState.WRITE.value:
             raise HTTPForbidden
-        async with grpc.aio.insecure_channel('localhost:50051') as channel:
+        async with grpc.aio.insecure_channel(
+            f"{self.request.app.config.grpc.host}:{self.request.app.config.grpc.port}"
+        ) as channel:
             stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
-            await stub.SendTimestamp(backend_pb2.SendTimestampRequest(document_id=str(doc_id),timestamp=new_data["timestamp"]))
+            await stub.SendTimestamp(
+                backend_pb2.SendTimestampRequest(
+                    document_id=str(doc_id), timestamp=new_data["timestamp"]
+                )
+            )
         try:
             upd_doc = await self.store.docs.update_doc(
                 name=new_data["name"],
@@ -238,13 +265,17 @@ class ManageDocView(AuthRequiredMixin, View):
                 f"{doc.name}.txt",
             )
         )
-        async with grpc.aio.insecure_channel('localhost:50051') as channel:
+        async with grpc.aio.insecure_channel(
+            f"{self.request.app.config.grpc.host}:{self.request.app.config.grpc.port}"
+        ) as channel:
             stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
-            await stub.HandleDelete(backend_pb2.HandleDeleteRequest(document_id=str(doc_id)))
+            await stub.HandleDelete(
+                backend_pb2.HandleDeleteRequest(document_id=str(doc_id))
+            )
         return json_response(data={"result": "succesful"})
 
 
-class ManageShareView(AuthRequiredMixin, View):
+class ManageShareView(AuthRequiredMixin, CorsViewMixin, View):
     @request_schema(ConnectionSchema)
     async def post(self):
         if self.request.user is None:
@@ -403,8 +434,14 @@ class ManageShareView(AuthRequiredMixin, View):
         )
         if connection is None:
             raise HTTPNotFound
-        async with grpc.aio.insecure_channel('localhost:50051') as channel:
+        async with grpc.aio.insecure_channel(
+            f"{self.request.app.config.grpc.host}:{self.request.app.config.grpc.port}"
+        ) as channel:
             stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
-            await stub.RemoveAccess(backend_pb2.RemoveAccessRequest(document_id=str(doc_id),user_id=str(user.id)))
+            await stub.RemoveAccess(
+                backend_pb2.RemoveAccessRequest(
+                    document_id=str(doc_id), user_id=str(user.id)
+                )
+            )
         await self.store.docs.remove_user_access(user.id, doc_id)
         return json_response(data={"status": "success"})

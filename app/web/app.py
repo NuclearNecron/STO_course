@@ -1,5 +1,6 @@
 from typing import Optional
 
+import aiohttp_cors
 from aiohttp.web import (
     Application as AiohttpApplication,
     View as AiohttpView,
@@ -56,14 +57,32 @@ app = Application()
 
 
 def setup_app(config_path: str) -> Application:
+    cors = aiohttp_cors.setup(
+        app,
+        defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+            )
+        },
+    )
     setup_logging(app)
     setup_config(app, config_path)
-    session_setup(app, EncryptedCookieStorage(app.config.session.key))
+    session_setup(
+        app,
+        EncryptedCookieStorage(
+            app.config.session.key,
+            samesite="None",
+            secure = True,
+            domain=".together",
+        ),
+    )
     setup_middlewares(app)
     api_doc(
         app, config_path="swagger.json", url_prefix="/api/doc", title="API docs"
     )
     setup_aiohttp_apispec(app)
-    register_urls(app)
+    register_urls(app, cors)
     setup_store(app)
     return app

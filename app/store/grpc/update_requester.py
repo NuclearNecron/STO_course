@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from app.web.app import Application
 
 
-class BotApi(BaseAccessor):
+class GRPCAPI(BaseAccessor):
     def __int__(self, app: "Application", *args, **kwargs):
         super().__init__(app, *args, **kwargs)
         self.client: Optional[ClientSession] = None
