@@ -179,6 +179,7 @@ function Document() {
         else if (msg_.type === "UPDATE") {
             let change_ = msg_.payload.update
             let timestamp_ = msg_.payload.timestamp
+            set_last_edited(timestamp_)
             // TODO: заменить логику применения изменения
             set_val(`${msg_.payload.update}`)
         }
