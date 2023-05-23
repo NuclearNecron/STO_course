@@ -5,7 +5,6 @@ import TextField from "@mui/material/TextField";
 import {useState, useEffect, useRef} from "react";
 import {useNavigate} from "react-router";
 import config from "../config";
-import DocsWebSocket from "../DocsWS";
 
 
 function Main() {
@@ -21,10 +20,15 @@ function Main() {
         fetch(
             `https://${config.backend_addr}/doc/create`,
             {
+                method: "POST",
+                headers:{
+                    'Content-Type':'application/json;charset=utf-8'
+                },
+                credentials: "include",
                 body: JSON.stringify({
                     name: doc_name_val,
                     timestamp: new Date().toISOString()
-                })
+                }),
             }
         )
             .then(async response => {
