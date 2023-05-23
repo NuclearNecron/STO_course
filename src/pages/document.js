@@ -4,6 +4,7 @@ import {useParams} from "react-router";
 import {TextField} from "@mui/material";
 import DocsWebSocket from "../DocsWS";
 import config from "../config";
+import Button from "@mui/material/Button";
 
 
 function Document() {
@@ -11,6 +12,11 @@ function Document() {
     const {docID} = useParams();
 
     const [val, set_val] = useState("");
+    const [locked, set_locked] = useState(false);
+    const [adduserid, set_adduserid] = useState("");
+    const [adduseraccess, set_adduseraccess] = useState("");
+    const [deluserid, set_deluserid] = useState("");
+    const [name, set_name] = useState("testname");
     const [have_doc, set_have_doc] = useState(false);
     const [last_edited, set_last_edited] = useState(null);
     const [ws_connected, set_ws_connected] = useState(false);
@@ -169,6 +175,8 @@ function Document() {
         }
         else if (msg_.type === "DISCONNECTED") {
             // TODO: отняли права - заблочить текстбокс + как-то предупредить?
+            set_val("")
+            set_locked(true)
         }
         else if (msg_.type === "CONNECTED") {
             // Пока не юзается
@@ -181,7 +189,13 @@ function Document() {
             let timestamp_ = msg_.payload.timestamp
             set_last_edited(timestamp_)
             // TODO: заменить логику применения изменения
-            set_val(`${msg_.payload.update}`)
+            let upd_str
+            if (change_.add===true){
+                upd_str = val.substring(0,change_.position)+change_.symbol+val.substring(change_.position,val.length)
+            }else{
+                upd_str = val.substring(0,change_.position)+val.substring(change_.position+change_.symbol.length,val.length)
+            }
+            set_val(upd_str)
         }
     }
 
@@ -195,6 +209,78 @@ function Document() {
         console.log("websocket: произошла ошибка!")
         console.log(e)
     }
+
+    const save_doc = async (doc_id) => {
+        fetch(`https://${config.backend_addr}/doc/${doc_id}`, {
+            credentials: "include",
+            method: "PUT",
+            headers:{
+                'Content-Type':'application/json;charset=utf-8'
+            },
+            body: JSON.stringify({
+                data: {
+                    name: name,
+                    timestamp: new Date().toISOString()
+                },
+                text:val
+            }),
+        })
+            .then(async response => {
+                if (response.ok) {
+                    response = await response.json()
+                    console.log(response)
+                } else {
+                    throw Error(`Something went wrong: code ${response.status}`)
+                }
+            })
+            .catch(error => {
+                console.log(error)
+            })
+    }
+
+    const add_user = async () => {
+        fetch(`https://${config.backend_addr}/doc/share/${docID}`, {
+            credentials: "include",
+            method: "POST",
+            headers:{
+                'Content-Type':'application/json;charset=utf-8'
+            },
+            body: JSON.stringify({
+                user:adduserid,
+                rights:adduseraccess
+            }),
+        })
+            .then(async response => {
+                if (response.ok) {
+                    response = await response.json()
+                    console.log(response)
+                } else {
+                    throw Error(`Something went wrong: code ${response.status}`)
+                }
+            })
+            .catch(error => {
+                console.log(error)
+            })
+    }
+
+    const delete_user = async () => {
+        fetch(`https://${config.backend_addr}/doc/share/${docID}?userId=${deluserid}`, {
+            credentials: "include",
+            method: "DELETE",
+        })
+            .then(async response => {
+                if (response.ok) {
+                    response = await response.json()
+                    console.log(response)
+                } else {
+                    throw Error(`Something went wrong: code ${response.status}`)
+                }
+            })
+            .catch(error => {
+                console.log(error)
+            })
+    }
+
 
     useEffect(() => {
 
@@ -210,6 +296,7 @@ function Document() {
                     const response = await raw_response.json()
                     console.log(response)
                     set_last_edited(response.data.last_edited)
+                    set_name(response.data.name)
                 } else {
                     throw Error(`Something went wrong: code ${raw_response.status}`)
                 }
@@ -252,6 +339,60 @@ function Document() {
         <>
             {!ws_connected? <>No connection to WebSocket Server!</>:
                 <>
+                    <div className="save">
+                        <Button variant={"contained"}
+                                size="small" onClick={ async() => {
+                            await save_doc(docID)
+                        }
+                        }>Сохранить</Button>
+                    </div>
+                    <div className="add user">
+                        <TextField
+                            margin="normal"
+                            id="add_user_id"
+                            label="ID пользователя"
+                            name="add_user_id"
+                            autoComplete="3"
+                            value={adduserid}
+                            onChange={e => {
+                                set_adduserid(e.target.value)
+                            }}
+                        />
+                        <TextField
+                            margin="normal"
+                            id="add_user_access"
+                            label="Уровень доступа"
+                            name="add_user_access"
+                            autoComplete="WRITE"
+                            value={adduseraccess}
+                            onChange={e => {
+                                set_adduseraccess(e.target.value)
+                            }}
+                        />
+                        <Button variant={"contained"}
+                                size="small" onClick={ async() => {
+                            await add_user()
+                        }
+                        }>Добавить</Button>
+                    </div>
+                    <div className="del user">
+                        <TextField
+                            margin="normal"
+                            id="del_user_id"
+                            label="ID пользователя"
+                            name="del_user_id"
+                            autoComplete="0"
+                            value={deluserid}
+                            onChange={e => {
+                                set_deluserid(e.target.value)
+                            }}
+                        />
+                        <Button variant={"contained"}
+                                size="small" onClick={ async() => {
+                            await delete_user()
+                        }
+                        }>Удалить</Button>
+                    </div>
                     <TextField
                         id="val"
                         label={"Пишем здесь"}
@@ -267,6 +408,7 @@ function Document() {
                         style={{width:"100%"}}
                         multiline={true}
                         rows={10}
+                        disabled={locked}
                     />
                 </>
             }

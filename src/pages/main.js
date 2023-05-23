@@ -5,6 +5,9 @@ import TextField from "@mui/material/TextField";
 import {useState, useEffect, useRef} from "react";
 import {useNavigate} from "react-router";
 import config from "../config";
+import {Card, CardActions, CardContent} from "@mui/material";
+import Typography from "@mui/material/Typography";
+import Link from "@mui/material/Link";
 
 
 function Main() {
@@ -37,6 +40,24 @@ function Main() {
                     console.log(response)
                     const new_id = response.data.id
                     navigate(`/doc/${new_id}`)
+                } else {
+                    throw Error(`Something went wrong: code ${response.status}`)
+                }
+            })
+            .catch(error => {
+                console.log(error)
+            })
+    }
+
+    const delete_doc = async (doc_id) => {
+        fetch(`https://${config.backend_addr}/doc/${doc_id}`, {
+            credentials: "include",
+            method: "DELETE",
+        })
+            .then(async response => {
+                if (response.ok) {
+                    response = await response.json()
+                    console.log(response)
                 } else {
                     throw Error(`Something went wrong: code ${response.status}`)
                 }
@@ -81,6 +102,18 @@ function Main() {
 
     return (
         <>
+            <div>
+                <Button variant={"contained"} className={"button"}
+                        onClick={e => {
+                            navigate("/auth")
+                        }}
+                >Авторизоваться</Button>
+                <Button variant={"contained"} className={"button"}
+                        onClick={e => {
+                            navigate("/reg")
+                        }}
+                >Зарегестрироваться</Button>
+            </div>
             <TextField
                 margin="normal"
                 id="doc_name"
@@ -103,14 +136,29 @@ function Main() {
             <br/>
             {docs_list.length === 0? <>Нет документов</>:
                 docs_list.map((val, index) => {
-                    return <Button
-                        onClick={() => {
-                            navigate(`/doc/${val.id}`)
-                        }
-                        }
-                    >
-                        {val.name}
-                    </Button>
+                    return <Card sx={{ minWidth: 200 }}>
+                        <CardContent>
+                            <Typography variant="h5" component="div">
+                                {val.name}
+                            </Typography>
+                            <Typography sx={{ mb: 1.5 }} color="text.secondary">
+                                Последнее сохранение: {val.last_edited}
+                            </Typography>
+                            <Typography sx={{ mb: 1.5 }} color="text.secondary">
+                                Владелец: {val.owner.nickname}
+                            </Typography>
+                        </CardContent>
+                        <CardActions>
+                            <Button size="small" onClick={() => {
+                                navigate(`/doc/${val.id}`)
+                            }
+                            }>Перейти</Button>
+                            <Button size="small" onClick={ async() => {
+                                await delete_doc(val.id)
+                            }
+                            }>Удалить</Button>
+                        </CardActions>
+                    </Card>
                 })
             }
         </>
