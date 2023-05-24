@@ -5,7 +5,7 @@ from sqlalchemy import (
     String,
     ForeignKey,
     DateTime,
-    UniqueConstraint,
+    UniqueConstraint, TIMESTAMP,
 )
 from sqlalchemy.orm import relationship
 

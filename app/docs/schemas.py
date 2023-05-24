@@ -9,3 +9,7 @@ class NewDocSchema(Schema):
 class ConnectionSchema(Schema):
     user = fields.Int(required=True)
     rights = fields.Str(required=True)
+
+class UpdDocSchema(Schema):
+    data = fields.Dict(required=True)
+    text = fields.Str(required=True)

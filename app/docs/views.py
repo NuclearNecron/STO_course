@@ -16,7 +16,7 @@ import aiofiles
 import aiofiles.os as aios
 from aiohttp_cors import CorsViewMixin
 
-from app.docs.schemas import NewDocSchema, ConnectionSchema
+from app.docs.schemas import NewDocSchema, ConnectionSchema, UpdDocSchema
 from app.web.app import View
 from app.web.mixin import AuthRequiredMixin
 from app.web.utils import json_response, AccessState
@@ -25,7 +25,7 @@ import app.store.grpc.ws_backend_pb2 as backend_pb2
 import app.store.grpc.ws_backend_pb2_grpc as backend_pb2_grpc
 
 
-class CreateDocView(AuthRequiredMixin, CorsViewMixin, View):
+class CreateDocView(CorsViewMixin, View):
     @request_schema(NewDocSchema)
     async def post(self):
         if self.request.user is None:
@@ -34,7 +34,7 @@ class CreateDocView(AuthRequiredMixin, CorsViewMixin, View):
         new_file = await self.store.docs.create_doc(
             name=newfiledata["name"],
             owner_id=self.request.user.id,
-            timestamp=newfiledata["timestamp"],
+            timestamp=newfiledata["timestamp"].replace(tzinfo=None),
         )
         if new_file is None:
             raise HTTPConflict
@@ -59,8 +59,10 @@ class CreateDocView(AuthRequiredMixin, CorsViewMixin, View):
         )
 
 
-class ListDocsView(AuthRequiredMixin, CorsViewMixin, View):
+class ListDocsView( CorsViewMixin, View):
     async def get(self):
+        if not getattr(self.request, "user", None):
+            raise HTTPUnauthorized
         if self.request.user is None:
             raise HTTPUnauthorized
         fileslist = await self.store.docs.get_list_docs(self.request.user.id)
@@ -82,8 +84,10 @@ class ListDocsView(AuthRequiredMixin, CorsViewMixin, View):
         )
 
 
-class GetFileView(AuthRequiredMixin, CorsViewMixin, View):
+class GetFileView(CorsViewMixin, View):
     async def get(self):
+        if not getattr(self.request, "user", None):
+            raise HTTPUnauthorized
         if self.request.user is None:
             raise HTTPUnauthorized
         try:
@@ -125,8 +129,10 @@ class GetFileView(AuthRequiredMixin, CorsViewMixin, View):
         )
 
 
-class ManageDocView(AuthRequiredMixin, CorsViewMixin, View):
+class ManageDocView(CorsViewMixin, View):
     async def get(self):
+        if not getattr(self.request, "user", None):
+            raise HTTPUnauthorized
         if self.request.user is None:
             raise HTTPUnauthorized
         try:
@@ -153,6 +159,7 @@ class ManageDocView(AuthRequiredMixin, CorsViewMixin, View):
             }
         )
 
+    @request_schema(UpdDocSchema)
     async def put(self):
         if self.request.user is None:
             raise HTTPUnauthorized
@@ -181,6 +188,7 @@ class ManageDocView(AuthRequiredMixin, CorsViewMixin, View):
             f"{self.request.app.config.grpc.host}:{self.request.app.config.grpc.port}"
         ) as channel:
             stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
+            check = new_data["timestamp"]
             await stub.SendTimestamp(
                 backend_pb2.SendTimestampRequest(
                     document_id=str(doc_id), timestamp=new_data["timestamp"]
@@ -190,7 +198,7 @@ class ManageDocView(AuthRequiredMixin, CorsViewMixin, View):
             upd_doc = await self.store.docs.update_doc(
                 name=new_data["name"],
                 timestamp=datetime.strptime(
-                    new_data["timestamp"], "%Y-%m-%d %H:%M:%S.%f"
+                    new_data["timestamp"], "%Y-%m-%dT%H:%M:%S.%fZ"
                 ),
                 doc_id=int(doc_id),
             )
@@ -275,7 +283,7 @@ class ManageDocView(AuthRequiredMixin, CorsViewMixin, View):
         return json_response(data={"result": "succesful"})
 
 
-class ManageShareView(AuthRequiredMixin, CorsViewMixin, View):
+class ManageShareView(CorsViewMixin, View):
     @request_schema(ConnectionSchema)
     async def post(self):
         if self.request.user is None:

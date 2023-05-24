@@ -75,7 +75,8 @@ def setup_app(config_path: str) -> Application:
             app.config.session.key,
             samesite="None",
             secure = True,
-            domain=".together",
+            domain=".docsto.ru",
+            httponly=False
         ),
     )
     setup_middlewares(app)

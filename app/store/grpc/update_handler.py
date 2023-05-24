@@ -58,8 +58,7 @@ class Handler:
                             )
                             async with aiofiles.open(
                                 join(
-                                    dirname(__file__),
-                                    "..",
+                                    dirname(dirname(dirname(__file__))),
                                     "storage",
                                     f"{current_doc.owner.id}",
                                     f"""{current_doc.name}.txt""",
@@ -68,7 +67,8 @@ class Handler:
                             ) as editing:
                                 line = await editing.read()
                                 for change in doc.update:
-                                    dict_change = json.loads(change)
+                                    dict_1 = json.loads(change)
+                                    dict_change = dict_1["payload"]["update"]
                                     if dict_change["add"]==True:
                                         line = line[:dict_change["position"]]+dict_change["symbol"]+line[dict_change["position"]:]
                                     else:
