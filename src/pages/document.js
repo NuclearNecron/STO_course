@@ -11,7 +11,10 @@ function Document() {
 
     const {docID} = useParams();
 
-    const [val, set_val] = useState("");
+    let [val, set_val] = useState("");
+    const text_field = useRef('');
+    let text_box = useRef();
+    const [val_need_upd, set_val_need_upd] = useState(false);
     const [locked, set_locked] = useState(false);
     const [adduserid, set_adduserid] = useState("");
     const [adduseraccess, set_adduseraccess] = useState("");
@@ -23,6 +26,10 @@ function Document() {
     const socket = useRef();
 
     //  Начало блока с функциями для поиска изменений в тексте и их отправки
+
+    // useEffect(() => {
+    //     text_field.current = val
+    // }, [val])
 
     const find_diffrence_lr = (bigger, shorter) => {
         var  symbol_left = 0
@@ -47,10 +54,10 @@ function Document() {
         return correct
     }
 
-    const update_handler = async (old_doc, new_doc) => {
+    const update_handler = (old_doc, new_doc) => {
         // TODO: вставить после каждого лога рассылку по вебсокету
-        console.log(old_doc)
-        console.log(new_doc)
+        console.log(`old_doc = ${old_doc}`)
+        console.log(`new_doc = ${new_doc}`)
         if (new_doc.length>old_doc.length){
             const change_lenght = new_doc.length-old_doc.length
             const lr_diff = find_diffrence_lr(new_doc,old_doc)
@@ -58,8 +65,8 @@ function Document() {
                 const change_ = {
                     "add":true,"position":lr_diff,"symbol":new_doc.substring(lr_diff)
                 }
-                console.log(change_)
-                await sendUpdate(change_)
+                console.log(`change_ = ${change_}`)
+                sendUpdate(change_)
             }
             else{
                 const right_correct = find_diffrence_right(new_doc,old_doc.substring(lr_diff))
@@ -68,20 +75,20 @@ function Document() {
                     const change_ = {
                         "add":true,"position":lr_diff,"symbol":new_doc.substring(lr_diff,lr_diff+change_lenght)
                     }
-                    console.log(change_)
-                    await sendUpdate(change_)
+                    console.log(`change_ = ${change_}`)
+                    sendUpdate(change_)
                 }
                 else{
                     let change_ = {
                         "add":false,"position":lr_diff,"symbol":old_doc.substring(lr_diff,lr_diff+old_doc.length- inline_same)
                     }
-                    console.log(change_)
-                    await sendUpdate(change_)
+                    console.log(`change_ = ${change_}`)
+                    sendUpdate(change_)
                     change_ = {
                         "add":true,"position":lr_diff,"symbol":new_doc.substring(lr_diff,lr_diff+change_lenght+old_doc.length- inline_same)
                     }
-                    console.log(change_)
-                    await sendUpdate(change_)
+                    console.log(`change_ = ${change_}`)
+                    sendUpdate(change_)
                 }
             }
         }else if (new_doc.length<old_doc.length){
@@ -91,8 +98,8 @@ function Document() {
                 const change_ = {
                     "add":false,"position":lr_diff,"symbol":old_doc.substring(lr_diff)
                 }
-                console.log(change_)
-                await sendUpdate(change_)
+                console.log(`change_ = ${change_}`)
+                sendUpdate(change_)
             }
             else{
                 const right_correct = find_diffrence_right(old_doc,new_doc.substring(lr_diff))
@@ -101,20 +108,20 @@ function Document() {
                     const change_ = {
                         "add":false,"position":lr_diff,"symbol":old_doc.substring(lr_diff,lr_diff+change_lenght)
                     }
-                    console.log(change_)
-                    await sendUpdate(change_)
+                    console.log(`change_ = ${change_}`)
+                    sendUpdate(change_)
                 }
                 else{
                     let change_ = {
                         "add":false,"position":lr_diff,"symbol":old_doc.substring(lr_diff,lr_diff+change_lenght+new_doc.length- inline_same)
                     }
-                    console.log(change_)
-                    await sendUpdate(change_)
+                    console.log(`change_ = ${change_}`)
+                    sendUpdate(change_)
                     change_ = {
                         "add":true,"position":lr_diff,"symbol":new_doc.substring(lr_diff,lr_diff+new_doc.length- inline_same)
                     }
-                    console.log(change_)
-                    await sendUpdate(change_)
+                    console.log(`change_ = ${change_}`)
+                    sendUpdate(change_)
                 }
             }}else{
             const lr_diff = find_diffrence_lr(new_doc,old_doc)
@@ -122,13 +129,13 @@ function Document() {
                 let change_ = {
                     "add":false,"position":lr_diff,"symbol":old_doc.substring(lr_diff)
                 }
-                console.log(change_)
-                await sendUpdate(change_)
+                console.log(`change_ = ${change_}`)
+                sendUpdate(change_)
                 change_ = {
                     "add":true,"position":lr_diff,"symbol":new_doc.substring(lr_diff)
                 }
-                console.log(change_)
-                await sendUpdate(change_)
+                console.log(`change_ = ${change_}`)
+                sendUpdate(change_)
             }
             else{
                 const right_correct = find_diffrence_right(new_doc,old_doc.substring(lr_diff))
@@ -136,13 +143,13 @@ function Document() {
                 let change_ = {
                     "add":false,"position":lr_diff,"symbol":old_doc.substring(lr_diff,lr_diff+new_doc.length- inline_same)
                 }
-                console.log(change_)
-                await sendUpdate(change_)
+                console.log(`change_ = ${change_}`)
+                sendUpdate(change_)
                 change_ = {
                     "add":true,"position":lr_diff,"symbol":new_doc.substring(lr_diff,lr_diff+new_doc.length- inline_same)
                 }
-                console.log(change_)
-                await sendUpdate(change_)
+                console.log(`change_ = ${change_}`)
+                sendUpdate(change_)
             }}
 
     }
@@ -172,10 +179,14 @@ function Document() {
 
         if (msg_.type === "DOCUMENT_DELETED") {
             // TODO: документ удален - обработать
+            //set_val("")
+            text_field.current = ''
+            set_locked(true)
         }
         else if (msg_.type === "DISCONNECTED") {
             // TODO: отняли права - заблочить текстбокс + как-то предупредить?
-            set_val("")
+            //set_val("")
+            text_field.current = ''
             set_locked(true)
         }
         else if (msg_.type === "CONNECTED") {
@@ -190,12 +201,28 @@ function Document() {
             set_last_edited(timestamp_)
             // TODO: заменить логику применения изменения
             let upd_str
+            console.log()
             if (change_.add===true){
-                upd_str = val.substring(0,change_.position)+change_.symbol+val.substring(change_.position,val.length)
+                console.log(`val = ${val}`)
+                console.log(`text_field ref = ${text_field.current}`)
+                let prefix = text_field.current.substring(0,change_.position)
+                // let prefix = val.substring(0,change_.position)
+                let suffix = text_field.current.substring(change_.position,text_field.current.length)
+                // let suffix = val.substring(change_.position,val.length)
+                console.log(`prefix = ${prefix}`)
+                console.log(`upd_val = ${change_.symbol}`)
+                console.log(`suffix = ${suffix}`)
+                upd_str = prefix + change_.symbol + suffix
+                console.log(`upd_str = ${upd_str}`)
+                console.log(`old value = ${val}`)
+                //set_val(upd_str)
+                text_field.current = upd_str
+                console.log(text_box.current)
             }else{
-                upd_str = val.substring(0,change_.position)+val.substring(change_.position+change_.symbol.length,val.length)
+                upd_str = text_field.current.substring(0,change_.position)+text_field.current.substring(change_.position+change_.symbol.length,text_field.current.length)
+                //set_val(upd_str)
+                text_field.current = upd_str
             }
-            set_val(upd_str)
         }
     }
 
@@ -220,9 +247,9 @@ function Document() {
             body: JSON.stringify({
                 data: {
                     name: name,
-                    timestamp: new Date().toISOString()
+                    timestamp: last_edited
                 },
-                text:val
+                text:text_field.current //val
             }),
         })
             .then(async response => {
@@ -313,7 +340,8 @@ function Document() {
                 if (raw_response.ok) {
                     const response = await raw_response.json()
                     console.log(response)
-                    set_val(response.data.res)
+                    text_field.current = response.data.res
+                    //set_val(response.data.res)
                     set_have_doc(true)
                 } else {
                     throw Error(`Something went wrong: code ${raw_response.status}`)
@@ -321,6 +349,12 @@ function Document() {
             })
 
     }, [])
+
+    // useEffect(() => {
+    //     // This effect will run after each state update
+    //     console.log(`current val = ${val}`);
+    //     set_val(val)
+    // }, [val]);
 
     useEffect(() => {
 
@@ -397,12 +431,14 @@ function Document() {
                         id="val"
                         label={"Пишем здесь"}
                         variant="outlined"
-                        value={val}
+                        value={text_field.current}
+                        ref={text_box}
                         onChange={event => {
                             event.preventDefault()
-                            console.log(event.target.value)
-                            update_handler(val, event.target.value)
-                            // set_val(event.target.value)  // не должно тут юзаться
+                            console.log(`event.target.value = ${event.target.value}`)
+                            update_handler(text_field.current, event.target.value)
+                            //set_val(event.target.value)  // не должно тут юзаться
+                            //set_val(val)
                             // sendUpdate(event.target.value)   // не должно тут юзаться
                         }}
                         style={{width:"100%"}}

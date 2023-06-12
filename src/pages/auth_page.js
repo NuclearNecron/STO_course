@@ -10,8 +10,11 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import config from "../config";
+import {useNavigate} from "react-router";
 
 export default function AuthPage() {
+
+    const navigate = useNavigate();
 
     const set_user_status = status => {
         localStorage.setItem(config.user_status, status)
@@ -44,6 +47,7 @@ export default function AuthPage() {
                     console.log(response)
                     set_user_status(true)
                     set_user_id(response.data.id)
+                    navigate("/")
                 } else {
                     throw Error(`Something went wrong: code ${response.status}`)
                 }

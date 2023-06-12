@@ -58,6 +58,7 @@ function Main() {
                 if (response.ok) {
                     response = await response.json()
                     console.log(response)
+                    get_docs_list()
                 } else {
                     throw Error(`Something went wrong: code ${response.status}`)
                 }
@@ -103,7 +104,7 @@ function Main() {
     return (
         <>
             <div>
-                <Button variant={"contained"} className={"button"}
+                <Button variant={"contained"} variant={"contained"} className={"button"}
                         onClick={e => {
                             navigate("/auth")
                         }}
@@ -144,9 +145,9 @@ function Main() {
                             <Typography sx={{ mb: 1.5 }} color="text.secondary">
                                 Последнее сохранение: {val.last_edited}
                             </Typography>
-                            <Typography sx={{ mb: 1.5 }} color="text.secondary">
-                                Владелец: {val.owner.nickname}
-                            </Typography>
+                            {/*<Typography sx={{ mb: 1.5 }} color="text.secondary">*/}
+                            {/*    Владелец: {val.owner.nickname}*/}
+                            {/*</Typography>*/}
                         </CardContent>
                         <CardActions>
                             <Button size="small" onClick={() => {
