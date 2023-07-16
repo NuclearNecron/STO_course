@@ -189,11 +189,12 @@ class ManageDocView(CorsViewMixin, View):
         ) as channel:
             stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
             check = new_data["timestamp"]
-            await stub.SendTimestamp(
+            res = await stub.SendTimestamp(
                 backend_pb2.SendTimestampRequest(
                     document_id=str(doc_id), timestamp=new_data["timestamp"]
                 )
             )
+            print(res)
         try:
             upd_doc = await self.store.docs.update_doc(
                 name=new_data["name"],
@@ -446,10 +447,11 @@ class ManageShareView(CorsViewMixin, View):
             f"{self.request.app.config.grpc.host}:{self.request.app.config.grpc.port}"
         ) as channel:
             stub = backend_pb2_grpc.WS_Backend_ServiceStub(channel=channel)
-            await stub.RemoveAccess(
+            res = await stub.RemoveAccess(
                 backend_pb2.RemoveAccessRequest(
                     document_id=str(doc_id), user_id=str(user.id)
                 )
             )
+            print (res)
         await self.store.docs.remove_user_access(user.id, doc_id)
         return json_response(data={"status": "success"})

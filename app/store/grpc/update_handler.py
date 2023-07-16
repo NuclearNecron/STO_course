@@ -57,15 +57,24 @@ class Handler:
                                 int(doc.document_id)
                             )
                             async with aiofiles.open(
+                                    join(
+                                        dirname(dirname(dirname(__file__))),
+                                        "storage",
+                                        f"{current_doc.owner.id}",
+                                        f"""{current_doc.name}.txt""",
+                                    ),
+                                    mode="r+",
+                            ) as editing:
+                                line = await editing.read()
+                            async with aiofiles.open(
                                 join(
                                     dirname(dirname(dirname(__file__))),
                                     "storage",
                                     f"{current_doc.owner.id}",
                                     f"""{current_doc.name}.txt""",
                                 ),
-                                mode="r+",
+                                mode="w+",
                             ) as editing:
-                                line = await editing.read()
                                 for change in doc.update:
                                     dict_1 = json.loads(change)
                                     dict_change = dict_1["payload"]["update"]
